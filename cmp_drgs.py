@@ -30,6 +30,10 @@ st.set_page_config(page_title="Comparador de precios - Droguerías (COL)", layou
 
 st.title("🔎 Comparador de precios — Farmatodo · Pasteur · Rebaja · Cruz Verde · Exito")
 
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
+
 with st.sidebar:
     st.header("Opciones")
     max_per_store = st.number_input("Máx. resultados por sitio", min_value=1, max_value=20, value=6)
