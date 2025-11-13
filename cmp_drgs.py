@@ -42,6 +42,14 @@ with st.sidebar:
 
 query = st.text_input("Producto a buscar (ej: dolex, trimebutina, desodorante)", value="dolex")
 
+try:
+    service = Service(ChromeDriverManager().install())
+    driver = webdriver.Chrome(service=service)
+    # ... your Selenium automation code
+    driver.quit()
+except Exception as e:
+    st.error(f"Error during browser automation: {e}")
+
 if run_button and query.strip():
     q = query.strip()
     st.info(f"Buscando: {q} — esto puede tardar unos segundos (cada sitio carga su página).")

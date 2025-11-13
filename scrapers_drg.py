@@ -5,7 +5,7 @@ import time
 from urllib.parse import urljoin
 
 
-DEFAULT_TIMEOUT = 15000  # ms
+DEFAULT_TIMEOUT = 10000  # ms
 
 def _normalize_price(text):
     if not text:
@@ -51,7 +51,7 @@ def scrape_farmatodo(query, max_results=10, headless=True):
             #print url
             page.goto(url)
             # esperar un poco para que cargue JS y productos
-            page.wait_for_timeout(15000)
+            page.wait_for_timeout(10000)
 
             # selector de tarjetas robusto (busca cualquier clase que contenga productCard)
             cards = page.query_selector_all('div.card-ftd__card-unique')
@@ -112,7 +112,7 @@ def scrape_rebaja(query, max_results=10, headless=True):
         try:
             url = f"{REBAJA_BASE}/search?query={query}"
             page.goto(url)
-            page.wait_for_timeout(15000)
+            page.wait_for_timeout(10000)
             cards = page.query_selector_all('section.vtex-product-summary-2-x-container')
             for c in cards[:max_results]:
                 try:
@@ -151,7 +151,7 @@ def scrape_cruzverde(query, max_results=10, headless=True):
         try:
             url = f"https://www.cruzverde.com.co/search?query={query}"
             page.goto(url)
-            page.wait_for_timeout(15000)
+            page.wait_for_timeout(10000)
             cards = page.query_selector_all('ml-card-product')
             for c in cards[:max_results]:
                 try:
@@ -191,7 +191,7 @@ def scrape_pasteur(query, max_results=10, headless=True):
         try:
             url = f"https://www.farmaciaspasteur.com.co/{query}?_q={query}&map=ft"
             page.goto(url)
-            page.wait_for_timeout(15000)  # Esperar a que se cargue el contenido
+            page.wait_for_timeout(10000)  # Esperar a que se cargue el contenido
 
             products = page.query_selector_all('div.vtex-flex-layout-0-x-flexCol--col-general-product-info')
             for p in products[:max_results]:
@@ -243,7 +243,7 @@ def scrape_exito(query, max_results=10, headless=True):
             #print url
             page.goto(url)
             # esperar un poco para que cargue JS y productos
-            page.wait_for_timeout(15000)
+            page.wait_for_timeout(10000)
 
             # selector de tarjetas robusto (busca cualquier clase que contenga productCard)
             cards = page.query_selector_all('article[class*="productCard"], article[class*="productCard_productCard"], article.productCard_productCard__M0677')
