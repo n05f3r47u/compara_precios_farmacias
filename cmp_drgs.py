@@ -6,13 +6,13 @@ import subprocess
 import streamlit as st
 ##
 # Instalar Playwright si no está listo (solo la primera vez)
-if not os.path.exists("/home/appuser/.cache/ms-playwright/chromium"):
-    with st.spinner("Instalando Playwright..."):
-        try:
-            subprocess.run(["playwright", "install", "chromium", "--with-deps"], check=True)
-            st.success("✅ Playwright instalado correctamente")
-        except Exception as e:
-            st.error(f"Error instalando Playwright: {e}")
+#if not os.path.exists("/home/appuser/.cache/ms-playwright/chromium"):
+#    with st.spinner("Instalando Playwright..."):
+#        try:
+#            subprocess.run(["playwright", "install", "chromium", "--with-deps"], check=True)
+#            st.success("✅ Playwright instalado correctamente")
+#        except Exception as e:
+#            st.error(f"Error instalando Playwright: {e}")
 
 ##
 
