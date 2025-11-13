@@ -4,19 +4,26 @@
 import os
 import subprocess
 import streamlit as st
-##
-# Instalar Playwright si no está listo (solo la primera vez)
-#if not os.path.exists("/home/appuser/.cache/ms-playwright/chromium"):
-#    with st.spinner("Instalando Playwright..."):
-#        try:
-#            subprocess.run(["playwright", "install", "chromium", "--with-deps"], check=True)
-#            st.success("✅ Playwright instalado correctamente")
-#        except Exception as e:
-#            st.error(f"Error instalando Playwright: {e}")
-
-##
-
 import pandas as pd
+
+# ------------------------------
+# Instalar Playwright + Chromium en Streamlit Cloud
+# ------------------------------
+CHROMIUM_PATH = "/home/appuser/.cache/ms-playwright/chromium"
+
+def ensure_chromium():
+    if not os.path.exists(CHROMIUM_PATH):
+        with st.spinner("Instalando Playwright + Chromium (solo la primera vez)..."):
+            try:
+                subprocess.run(["pip", "install", "playwright"], check=True)
+                subprocess.run(["playwright", "install", "chromium", "--with-deps"], check=True)
+                st.success("Chromium listo.")
+            except Exception as e:
+                st.error(f"No se pudo instalar Chromium: {e}")
+
+ensure_chromium()
+##
+
 from scrapers_drg import scrape_all
 import time
 
@@ -30,9 +37,6 @@ st.set_page_config(page_title="Comparador de precios - Droguerías (COL)", layou
 
 st.title("🔎 Comparador de precios — Farmatodo · Pasteur · Rebaja · Cruz Verde · Exito")
 
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
 
 with st.sidebar:
     st.header("Opciones")
@@ -41,14 +45,6 @@ with st.sidebar:
     run_button = st.button("Buscar")
 
 query = st.text_input("Producto a buscar (ej: dolex, trimebutina, desodorante)", value="dolex")
-
-try:
-    service = Service(ChromeDriverManager().install())
-    driver = webdriver.Chrome(service=service)
-    # ... your Selenium automation code
-    driver.quit()
-except Exception as e:
-    st.error(f"Error during browser automation: {e}")
 
 if run_button and query.strip():
     q = query.strip()
