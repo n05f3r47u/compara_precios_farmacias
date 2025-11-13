@@ -1,11 +1,10 @@
-# app_streamlit.py
-import streamlit as st
-import pandas as pd
-#
+# cmp_drgs.py
+
+##
 import os
 import subprocess
 import streamlit as st
-
+##
 # Instalar Playwright si no está listo (solo la primera vez)
 if not os.path.exists("/home/appuser/.cache/ms-playwright/chromium"):
     with st.spinner("Instalando Playwright..."):
@@ -15,8 +14,9 @@ if not os.path.exists("/home/appuser/.cache/ms-playwright/chromium"):
         except Exception as e:
             st.error(f"Error instalando Playwright: {e}")
 
-#
+##
 
+import pandas as pd
 from scrapers_drg import scrape_all
 import time
 
