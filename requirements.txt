@@ -2,3 +2,4 @@ playwright
 streamlit
 python-dotenv
 pandas
+webdriver-manager
