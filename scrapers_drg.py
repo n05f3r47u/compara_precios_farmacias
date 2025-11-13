@@ -26,11 +26,25 @@ def _normalize_price(text):
         return None
 
 def _make_page(pw, headless=True):
-    browser = pw.chromium.launch(headless=headless)
-    context = browser.new_context(user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
+    browser = pw.chromium.launch(
+        headless=headless,
+        args=[
+            "--no-sandbox",
+            "--disable-setuid-sandbox",
+            "--disable-gpu",
+            "--disable-dev-shm-usage",
+            "--single-process",
+            "--no-zygote"
+        ]
+    )
+    context = browser.new_context(
+        user_agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                   "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    )
     page = context.new_page()
     page.set_default_timeout(DEFAULT_TIMEOUT)
     return browser, page
+
 
 FARMATODO_BASE = "https://www.farmatodo.com.co/"
 
