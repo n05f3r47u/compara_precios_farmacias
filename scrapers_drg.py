@@ -1,6 +1,6 @@
 # scrapers_drg.py
 from playwright.sync_api import sync_playwright, TimeoutError as PWTimeout
-from chromium_downloader import get_chromium_path   # <--- IMPORTANTE
+#from chromium_downloader import get_chromium_path   # <--- IMPORTANTE
 import re
 import time
 from urllib.parse import urljoin
@@ -27,25 +27,8 @@ def _normalize_price(text):
         return None
 
 def _make_page(pw, headless=True):
-    chrome_bin = get_chromium_path()  # obtener Chromium portable
-
-    browser = pw.chromium.launch(
-        headless=headless,
-        executable_path=chrome_bin,
-        args=[
-            "--no-sandbox",
-            "--disable-setuid-sandbox",
-            "--disable-gpu",
-            "--disable-dev-shm-usage",
-            "--single-process",
-            "--no-zygote"
-        ]
-    )
-
-    context = browser.new_context(
-        user_agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-                   "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    )
+    browser = pw.chromium.launch(headless=headless)
+    context = browser.new_context(user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
     page = context.new_page()
     page.set_default_timeout(DEFAULT_TIMEOUT)
     return browser, page
