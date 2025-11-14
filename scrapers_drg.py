@@ -209,4 +209,37 @@ def scrape_cruzverde(query, max_results=10):
     for c in cards[:max_results]:
         try:
             title = c.select_one("h3") or c.select_one("h2") or c.select_one("a")
-            price = c.select_one(".prices, .pric_
+            price = c.select_one(".prices, .price, span.font-bold, span.price")
+            link = c.select_one("a")
+            img = c.select_one("img")
+
+            if not title:
+                continue
+
+            price_text = price.get_text(strip=True) if price else ""
+
+            results.append({
+                "store": "cruzverde",
+                "title": title.get_text(strip=True),
+                "price_raw": price_text,
+                "price": normalize_price(price_text),
+                "link": link["href"] if link else None,
+                "img": img["src"] if img else None
+            })
+        except:
+            continue
+
+    return results
+
+
+# ================================================================
+# MASTER SCRAPER — SEGURO Y NUNCA FALLA
+# ================================================================
+def scrape_all(query, max_results=6):
+    return {
+        "farmatodo": scrape_farmatodo(query, max_results),
+        "pasteur": scrape_pasteur(query, max_results),
+        "cruzverde": scrape_cruzverde(query, max_results),
+        "rebaja": scrape_rebaja(query, max_results),
+        "exito": scrape_exito(query, max_results),
+    }
