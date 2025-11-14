@@ -9,7 +9,7 @@ CHROMIUM_DIR = "/tmp/chromium"
 CHROMIUM_BIN = os.path.join(CHROMIUM_DIR, "chrome")
 
 @st.cache_resource
-def get_chromium():
+def get_chromium_path():
     if os.path.exists(CHROMIUM_BIN):
         return CHROMIUM_BIN
 
