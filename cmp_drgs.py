@@ -1,11 +1,10 @@
 import streamlit as st
 import pandas as pd
-import asyncio
 import nest_asyncio
+import asyncio
 
 from scrapers_drg import scrape_all
 
-# Permitir async dentro de Streamlit
 nest_asyncio.apply()
 
 st.set_page_config(page_title="Comparador Droguerías", layout="wide")
@@ -15,9 +14,8 @@ query = st.text_input("Producto a buscar", "dolex")
 max_results = st.number_input("Máx. resultados por tienda", 1, 20, 6)
 
 if st.button("Buscar"):
-    st.info("Buscando productos...")
+    st.info("Buscando en 5 tiendas simultáneamente...")
 
-    # Ejecutar async dentro de Streamlit sin romper el event-loop
     loop = asyncio.get_event_loop()
     try:
         data = loop.run_until_complete(scrape_all(query, max_results))

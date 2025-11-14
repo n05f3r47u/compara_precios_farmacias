@@ -2,7 +2,9 @@ import asyncio
 import re
 from browser import get_browser_page
 
-# Normalizador de precios
+# -------------------------
+#   NORMALIZADOR
+# -------------------------
 def normalize_price(text):
     if not text:
         return None
@@ -14,13 +16,12 @@ def normalize_price(text):
         return None
 
 
-# -----------------------------
-#  FARMATODO
-# -----------------------------
-async def scrape_farmatodo(query, max_results=10):
-    url = f"https://www.farmatodo.com.co/buscar?product={query}&departamento=Todos&filtros="
+# -------------------------
+#   SCRAPERS INDIVIDUALES
+# -------------------------
 
-    browser, page = await get_browser_page()
+async def scrape_farmatodo(page, query, max_results):
+    url = f"https://www.farmatodo.com.co/buscar?product={query}&departamento=Todos&filtros="
     await page.goto(url, waitUntil="networkidle2")
     await asyncio.sleep(3)
 
@@ -45,17 +46,11 @@ async def scrape_farmatodo(query, max_results=10):
         except:
             continue
 
-    await browser.close()
     return results
 
 
-# -----------------------------
-#  REBAJA
-# -----------------------------
-async def scrape_rebaja(query, max_results=10):
+async def scrape_rebaja(page, query, max_results):
     url = f"https://www.larebajavirtual.com/search?query={query}"
-
-    browser, page = await get_browser_page()
     await page.goto(url, waitUntil="networkidle2")
     await asyncio.sleep(3)
 
@@ -80,17 +75,11 @@ async def scrape_rebaja(query, max_results=10):
         except:
             continue
 
-    await browser.close()
     return results
 
 
-# -----------------------------
-#  CRUZ VERDE
-# -----------------------------
-async def scrape_cruzverde(query, max_results=10):
+async def scrape_cruzverde(page, query, max_results):
     url = f"https://www.cruzverde.com.co/search?query={query}"
-
-    browser, page = await get_browser_page()
     await page.goto(url, waitUntil="networkidle2")
     await asyncio.sleep(3)
 
@@ -115,17 +104,11 @@ async def scrape_cruzverde(query, max_results=10):
         except:
             continue
 
-    await browser.close()
     return results
 
 
-# -----------------------------
-#  PASTEUR
-# -----------------------------
-async def scrape_pasteur(query, max_results=10):
+async def scrape_pasteur(page, query, max_results):
     url = f"https://www.farmaciaspasteur.com.co/{query}?_q={query}&map=ft"
-
-    browser, page = await get_browser_page()
     await page.goto(url, waitUntil="networkidle2")
     await asyncio.sleep(3)
 
@@ -150,17 +133,11 @@ async def scrape_pasteur(query, max_results=10):
         except:
             continue
 
-    await browser.close()
     return results
 
 
-# -----------------------------
-#  EXITO
-# -----------------------------
-async def scrape_exito(query, max_results=10):
+async def scrape_exito(page, query, max_results):
     url = f"https://www.exito.com/s?q={query}"
-
-    browser, page = await get_browser_page()
     await page.goto(url, waitUntil="networkidle2")
     await asyncio.sleep(3)
 
@@ -185,18 +162,46 @@ async def scrape_exito(query, max_results=10):
         except:
             continue
 
-    await browser.close()
     return results
 
 
-# -----------------------------
-#  MASTER SCRAPER
-# -----------------------------
+# -------------------------
+#  PARALLEL MASTER SCRAPER
+# -------------------------
+
 async def scrape_all(query, max_results=6):
+
+    # Crear un navegador global
+    browser_page_pairs = await asyncio.gather(
+        get_browser_page(),
+        get_browser_page(),
+        get_browser_page(),
+        get_browser_page(),
+        get_browser_page()
+    )
+
+    # 5 páginas, una por tienda
+    pages = [p for (b, p) in browser_page_pairs]
+    browsers = [b for (b, p) in browser_page_pairs]
+
+    tasks = [
+        scrape_farmatodo(pages[0], query, max_results),
+        scrape_pasteur(pages[1], query, max_results),
+        scrape_cruzverde(pages[2], query, max_results),
+        scrape_rebaja(pages[3], query, max_results),
+        scrape_exito(pages[4], query, max_results),
+    ]
+
+    results = await asyncio.gather(*tasks)
+
+    # Cerrar todos los navegadores
+    for b in browsers:
+        await b.close()
+
     return {
-        "farmatodo": await scrape_farmatodo(query, max_results),
-        "pasteur": await scrape_pasteur(query, max_results),
-        "cruzverde": await scrape_cruzverde(query, max_results),
-        "rebaja": await scrape_rebaja(query, max_results),
-        "exito": await scrape_exito(query, max_results),
+        "farmatodo": results[0],
+        "pasteur": results[1],
+        "cruzverde": results[2],
+        "rebaja": results[3],
+        "exito": results[4],
     }
