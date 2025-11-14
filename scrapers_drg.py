@@ -71,7 +71,7 @@ def scrape_farmatodo(query, max_results=10):
 # EXITO — API VTEX JSON (a veces devuelve HTML ? validación obligatoria)
 # ================================================================
 def scrape_exito(query, max_results=10):
-    url = "https://www.exito.com/api/catalog_system/pub/products/search/?ft=" + query
+    url = "https://www.exito.com/s?q=" + query
 
     try:
         r = requests.get(url, headers=HEADERS, timeout=10)
