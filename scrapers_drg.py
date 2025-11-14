@@ -71,35 +71,50 @@ def scrape_farmatodo(query, max_results=10):
 # EXITO — API VTEX JSON (a veces devuelve HTML ? validación obligatoria)
 # ================================================================
 def scrape_exito(query, max_results=10):
-    url = "https://www.exito.com/s?q=" + query
+    url = f"https://www.exito.com/s?q={query}"
 
     try:
         r = requests.get(url, headers=HEADERS, timeout=10)
     except:
         return []
 
-    # validar que el response sea JSON
-    try:
-        items = r.json()
-    except ValueError:  # respuesta HTML ? vacía
-        return []
+    soup = BeautifulSoup(r.text, "lxml")
 
-    if not isinstance(items, list):
-        return []
-
+    # Cada producto está en un <article>
+    cards = soup.select("article.productCard_productCard__M0677")
     results = []
-    for p in items[:max_results]:
-        try:
-            seller = p["items"][0]["sellers"][0]["commertialOffer"]
-            price = seller["Price"]
-            img = p["items"][0]["images"][0]["imageUrl"]
-            link = p.get("link")
 
+    for c in cards[:max_results]:
+        try:
+            # ---------- titulo ----------
+            title_el = c.select_one("h3.styles_name__qQJiK")
+            title = title_el.get_text(strip=True) if title_el else None
+
+            # ---------- precio preferido (store price) ----------
+            price_el = c.select_one("span[data-testid='store-price']")
+            if price_el:
+                price_text = price_el.get_text(strip=True)
+            else:
+                # fallback a precio "otros"
+                price_alt = c.select_one("p[data-fs-container-price-otros]")
+                price_text = price_alt.get_text(strip=True) if price_alt else None
+
+            price = normalize_price(price_text)
+
+            # ---------- imagen ----------
+            img_el = c.select_one("img")
+            img = img_el["src"] if img_el else None
+
+            # ---------- link ----------
+            link_el = c.select_one("a[data-testid='product-link']")
+            link = "https://www.exito.com" + link_el["href"] if link_el else None
+
+            # Agregar final
             results.append({
                 "store": "exito",
-                "title": p["productName"],
-                "price_raw": f"${price:,.0f}",
-                "price": float(price),
+                "title": title,
+                "price_raw": price_text,
+                "price": price,
                 "link": link,
                 "img": img
             })
@@ -107,6 +122,7 @@ def scrape_exito(query, max_results=10):
             continue
 
     return results
+
 
 
 # ================================================================
@@ -238,8 +254,8 @@ def scrape_cruzverde(query, max_results=10):
 def scrape_all(query, max_results=6):
     return {
         "farmatodo": scrape_farmatodo(query, max_results),
-       #"pasteur": scrape_pasteur(query, max_results),
+#       "pasteur": scrape_pasteur(query, max_results),
         "cruzverde": scrape_cruzverde(query, max_results),
-       #"rebaja": scrape_rebaja(query, max_results),
+#       "rebaja": scrape_rebaja(query, max_results),
         "exito": scrape_exito(query, max_results),
     }
