@@ -1,28 +1,9 @@
 # cmp_drgs.py
 
-##
 import os
 import subprocess
 import streamlit as st
 import pandas as pd
-
-# ------------------------------
-# Instalar Playwright + Chromium en Streamlit Cloud
-# ------------------------------
-CHROMIUM_PATH = "/home/appuser/.cache/ms-playwright/chromium"
-
-def ensure_chromium():
-    if not os.path.exists(CHROMIUM_PATH):
-        with st.spinner("Instalando Playwright + Chromium (solo la primera vez)..."):
-            try:
-                subprocess.run(["pip", "install", "playwright"], check=True)
-                subprocess.run(["playwright", "install", "chromium", "--with-deps"], check=True)
-                st.success("Chromium listo.")
-            except Exception as e:
-                st.error(f"No se pudo instalar Chromium: {e}")
-
-ensure_chromium()
-##
 
 from scrapers_drg import scrape_all
 import time
