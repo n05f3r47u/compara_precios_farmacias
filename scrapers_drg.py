@@ -238,8 +238,8 @@ def scrape_cruzverde(query, max_results=10):
 def scrape_all(query, max_results=6):
     return {
         "farmatodo": scrape_farmatodo(query, max_results),
-        "pasteur": scrape_pasteur(query, max_results),
+       #"pasteur": scrape_pasteur(query, max_results),
         "cruzverde": scrape_cruzverde(query, max_results),
-        "rebaja": scrape_rebaja(query, max_results),
+       #"rebaja": scrape_rebaja(query, max_results),
         "exito": scrape_exito(query, max_results),
     }
