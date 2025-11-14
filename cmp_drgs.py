@@ -1,11 +1,6 @@
 import streamlit as st
 import pandas as pd
-import nest_asyncio
-import asyncio
-
 from scrapers_drg import scrape_all
-
-nest_asyncio.apply()
 
 st.set_page_config(page_title="Comparador Droguerías", layout="wide")
 st.title("🔎 Comparador de Precios — Droguerías en Colombia")
@@ -14,14 +9,9 @@ query = st.text_input("Producto a buscar", "dolex")
 max_results = st.number_input("Máx. resultados por tienda", 1, 20, 6)
 
 if st.button("Buscar"):
-    st.info("Buscando en 5 tiendas simultáneamente...")
+    st.info("Buscando productos...")
 
-    loop = asyncio.get_event_loop()
-    try:
-        data = loop.run_until_complete(scrape_all(query, max_results))
-    except Exception as e:
-        st.error(f"Error: {e}")
-        st.stop()
+    data = scrape_all(query, max_results)
 
     rows = []
     for store, items in data.items():

@@ -1,5 +1,5 @@
 streamlit
 pandas
-pyppeteer
-matplotlib
-nest_asyncio
+beautifulsoup4
+requests
+lxml
