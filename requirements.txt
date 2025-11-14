@@ -1,4 +1,4 @@
-playwright
 streamlit
-python-dotenv
 pandas
+pyppeteer
+matplotlib
