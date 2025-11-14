@@ -1,9 +1,11 @@
 import streamlit as st
 import pandas as pd
+import matplotlib.pyplot as plt
+
 from scrapers_drg import scrape_all
 
-st.set_page_config(page_title="Comparador Droguerías", layout="wide")
-st.title("🔎 Comparador de Precios — Droguerías en Colombia")
+st.set_page_config(layout="wide")
+st.title("🔎 Comparador de Precios — Droguerías Colombia")
 
 query = st.text_input("Producto a buscar", "dolex")
 max_results = st.number_input("Máx. resultados por tienda", 1, 20, 6)
@@ -17,6 +19,7 @@ if st.button("Buscar"):
     for store, items in data.items():
         for it in items:
             rows.append({
+                "seleccionar": False,
                 "tienda": store,
                 "titulo": it.get("title"),
                 "precio_raw": it.get("price_raw"),
@@ -27,26 +30,18 @@ if st.button("Buscar"):
 
     df = pd.DataFrame(rows)
 
-    st.subheader("Resultados")
-    st.dataframe(df)
+    st.subheader("Resultados (selecciona productos)")
+    edited_df = st.data_editor(df, use_container_width=True)
 
-    st.subheader("Mejor precio por tienda")
-    if "precio" in df.columns:
-        best = (
-            df.dropna(subset=["precio"])
-              .groupby("tienda")
-              .apply(lambda g: g.nsmallest(1, "precio"))
-              .reset_index(drop=True)
-        )
-        st.table(best)
+    selected = edited_df[edited_df["seleccionar"] == True]
 
-    st.subheader("Imágenes")
-    for _, r in df.iterrows():
-        cols = st.columns([1, 4])
-        with cols[0]:
-            if r["img"]:
-                st.image(r["img"], width=120)
-        with cols[1]:
-            st.write(f"**{r['titulo']}** — {r['tienda']} — {r['precio_raw']}")
-            if r["link"]:
-                st.write(f"[Ver producto]({r['link']})")
+    if len(selected) > 0:
+        st.subheader("📊 Comparación de precios — seleccionados")
+
+        fig, ax = plt.subplots(figsize=(10, 4))
+        ax.scatter(selected["precio"], selected["tienda"])
+        ax.set_xlabel("Precio (COP)")
+        ax.set_ylabel("Tienda")
+        ax.set_title("Comparación de precios")
+
+        st.pyplot(fig)
