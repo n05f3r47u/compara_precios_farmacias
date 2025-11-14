@@ -219,33 +219,52 @@ def scrape_cruzverde(query, max_results=10):
 
     soup = BeautifulSoup(r.text, "lxml")
 
-    cards = soup.select("div.product-card, ml-card-product, div.product-item")
+    # Cada producto está en este contenedor
+    cards = soup.select("div.relative.h-full.bg-white.border.rounded-sm")
+
     results = []
 
     for c in cards[:max_results]:
         try:
-            title = c.select_one("h3") or c.select_one("h2") or c.select_one("a")
-            price = c.select_one(".prices, .price, span.font-bold, span.price")
-            link = c.select_one("a")
-            img = c.select_one("img")
+            # ---------- Imagen ----------
+            img_el = c.select_one("ml-product-image img")
+            img = img_el["src"] if img_el else None
 
-            if not title:
-                continue
+            # ---------- Título ----------
+            title_el = c.select_one("a font-open span, a span, a[ id ] span")
+            if not title_el:
+                # fallback más agresivo
+                title_el = c.select_one("a span")
+            title = title_el.get_text(strip=True) if title_el else None
 
-            price_text = price.get_text(strip=True) if price else ""
+            # ---------- Link ----------
+            link_el = c.select_one("a[href]")
+            link = "https://www.cruzverde.com.co" + link_el["href"] if link_el else None
+
+            # ---------- Precio actual ----------
+            price_el = c.select_one("span.font-bold.text-prices")
+            price_text = price_el.get_text(strip=True) if price_el else None
+            price = normalize_price(price_text)
+
+            # ---------- Precio normal (opcional) ----------
+            normal_el = c.select_one("div.line-through")
+            normal_text = normal_el.get_text(strip=True) if normal_el else None
 
             results.append({
                 "store": "cruzverde",
-                "title": title.get_text(strip=True),
+                "title": title,
                 "price_raw": price_text,
-                "price": normalize_price(price_text),
-                "link": link["href"] if link else None,
-                "img": img["src"] if img else None
+                "price": price,
+                "price_normal": normal_text,
+                "link": link,
+                "img": img,
             })
-        except:
+
+        except Exception:
             continue
 
     return results
+
 
 
 # ================================================================
