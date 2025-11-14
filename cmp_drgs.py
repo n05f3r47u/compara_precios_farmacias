@@ -30,10 +30,19 @@ if st.button("Buscar"):
 
     df = pd.DataFrame(rows)
 
-    st.subheader("Resultados (selecciona productos)")
-    edited_df = st.data_editor(df, use_container_width=True)
+    # Asegurar que la columna 'seleccionar' exista SIEMPRE
+    if "seleccionar" not in df.columns:
+        df["seleccionar"] = False
 
-    selected = edited_df[edited_df["seleccionar"] == True]
+    st.subheader("Resultados (selecciona productos)")
+    edited_df = st.data_editor(
+        df,
+        use_container_width=True,
+        hide_index=True
+    )
+
+    # Filtrar seleccionados de forma segura
+    selected = edited_df[edited_df.get("seleccionar", False) == True]
 
     if len(selected) > 0:
         st.subheader("📊 Comparación de precios — seleccionados")
@@ -45,3 +54,5 @@ if st.button("Buscar"):
         ax.set_title("Comparación de precios")
 
         st.pyplot(fig)
+    else:
+        st.info("No se seleccionó ningún producto para graficar.")
