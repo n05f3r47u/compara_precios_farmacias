@@ -39,7 +39,7 @@ def _get_soup(url, params=None, retries=2, timeout=10, log_prefix=None):
             if log_prefix:
                 os.makedirs("_logs", exist_ok=True)
                 with open(f"_logs/{log_prefix}_attempt{attempt}.html", "w", encoding="utf-8") as f:
-                    f.write(r.text[:20000])
+                    f.write(r.text[:20])
 
             if r.status_code == 200 and r.text:
                 return BeautifulSoup(r.text, "html.parser")
