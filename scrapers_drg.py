@@ -180,7 +180,7 @@ def scrape_pasteur(query, max_results=10):
         params={"":query, "map": "ft"},
         log_prefix="pasteur"
     )
-    print(soup);
+
     if not soup:
         return []
 
