@@ -204,7 +204,7 @@ def scrape_pasteur(query, max_results=10):
             img_src = img.get("src") if img else None
 
             results.append({
-                "store": "Pasteur",
+                "store": "Pasteur"+soup,
                 "title": title.get_text(strip=True) if title else None,
                 "price_raw": price.get_text(strip=True) if price else None,
                 "price": _normalize_price(price.get_text()) if price else None,
