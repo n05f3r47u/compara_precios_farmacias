@@ -275,7 +275,7 @@ def scrape_all(query, max_per_store=6, selected_stores=None):
         "Pasteur": scrape_pasteur,
         "Cruz Verde": scrape_cruzverde,
         "Rebaja": scrape_rebaja,
-        "Éxito": scrape_exito
+        "Exito": scrape_exito
     }
 
     # Filtrar tiendas seleccionadas correctamente
