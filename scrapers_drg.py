@@ -177,7 +177,7 @@ def scrape_pasteur(query, max_results=10):
 
     soup = _get_soup(
         f"{base}/",
-        params={query, "map": "ft"},
+        params={"":query, "map": "ft"},
         log_prefix="pasteur"
     )
     print(soup);
