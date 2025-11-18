@@ -275,11 +275,12 @@ def scrape_all(query, max_per_store=6, selected_stores=None):
         "Pasteur": scrape_pasteur,
         "Cruz Verde": scrape_cruzverde,
         "Rebaja": scrape_rebaja,
-        "Exito": scrape_exito
+        "Éxito": scrape_exito
     }
 
+    # Filtrar tiendas seleccionadas correctamente
     if selected_stores:
-        stores = {k: v for k, fn in stores.items() if k in selected_stores}
+        stores = {k: fn for k, fn in stores.items() if k in selected_stores}
 
     out = {}
 
