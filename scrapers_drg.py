@@ -176,7 +176,7 @@ def scrape_pasteur(query, max_results=10):
     base = "https://www.farmaciaspasteur.com.co"
 
     soup = _get_soup(
-        f"{base}/search",
+        f"{base}/",
         params={"_q": query, "map": "ft"},
         log_prefix="pasteur"
     )
