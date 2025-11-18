@@ -157,7 +157,7 @@ def scrape_exito(query, max_results=10):
         img = c.select_one("img")
 
         item = {
-            "store": "Éxito",
+            "store": "Exito",
             "title": title.get_text(strip=True) if title else None,
             "price_raw": price.get_text(strip=True) if price else None,
             "price": _normalize_price(price.get_text()) if price else None,
