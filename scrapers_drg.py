@@ -1,24 +1,17 @@
+# scrapers_drg.py
 import requests
 from bs4 import BeautifulSoup
+from urllib.parse import urljoin
 import re
-import json
-
-# ------------------------------------
-#  HEADERS GENERALES
-# ------------------------------------
-HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                  "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-}
 
 
-# ------------------------------------
-#  UTILIDAD DE NORMALIZACIÓN
-# ------------------------------------
-def normalize_price(txt):
-    if not txt:
+# ----------------------------------------------------
+# Utilidad: normalizar precios
+# ----------------------------------------------------
+def _normalize_price(text):
+    if not text:
         return None
-    t = re.sub(r"[^\d,\.]", "", txt)
+    t = re.sub(r"[^\d,\.]", "", text)
     t = t.replace(".", "").replace(",", ".")
     try:
         return float(t)
@@ -26,255 +19,176 @@ def normalize_price(txt):
         return None
 
 
-# ================================================================
-# FARMATODO — usa JSON interno en __NEXT_DATA__
-# ================================================================
+# ----------------------------------------------------
+# SCRAPER: FARMATODO
+# ----------------------------------------------------
 def scrape_farmatodo(query, max_results=10):
-    url = f"https://www.farmatodo.com.co/search?q={query}"
-
-    try:
-        r = requests.get(url, headers=HEADERS, timeout=10)
-    except:
-        return []
-
-    soup = BeautifulSoup(r.text, "lxml")
-
-    # obtener JSON de Next.js
-    script = soup.find("script", {"id": "__NEXT_DATA__"})
-    if not script:
-        return []
-
-    try:
-        data = json.loads(script.text)
-        products = data["props"]["pageProps"]["products"]["products"]
-    except:
-        return []
+    url = f"https://www.farmatodo.com.co/buscar?product={query}&departamento=Todos"
+    r = requests.get(url, timeout=10)
+    soup = BeautifulSoup(r.text, "html.parser")
 
     results = []
-    for p in products[:max_results]:
-        try:
-            results.append({
-                "store": "farmatodo",
-                "title": p.get("name"),
-                "price_raw": p["price"]["formattedValue"],
-                "price": normalize_price(p["price"]["formattedValue"]),
-                "link": "https://www.farmatodo.com.co" + p.get("url", ""),
-                "img": p.get("image")
-            })
-        except:
-            continue
-
-    return results
-
-
-# ================================================================
-# EXITO — API VTEX JSON (a veces devuelve HTML ? validación obligatoria)
-# ================================================================
-def scrape_exito(query, max_results=10):
-    url = f"https://www.exito.com/s?q={query}"
-
-    try:
-        r = requests.get(url, headers=HEADERS, timeout=10)
-    except:
-        return []
-
-    soup = BeautifulSoup(r.text, "lxml")
-
-    # Cada producto está en un <article>
-    cards = soup.select("article.productCard_productCard__M0677")
-    results = []
+    cards = soup.select("div.card-ftd__card-unique") or soup.select("article, div[class*=product]")
 
     for c in cards[:max_results]:
-        try:
-            # ---------- titulo ----------
-            title_el = c.select_one("h3.styles_name__qQJiK")
-            title = title_el.get_text(strip=True) if title_el else None
+        title = c.select_one("p.text-title")
+        price = c.select_one("span.price__text-price")
+        link = c.select_one("a[href]")
+        img = c.select_one("img")
 
-            # ---------- precio preferido (store price) ----------
-            price_el = c.select_one("span[data-testid='store-price']")
-            if price_el:
-                price_text = price_el.get_text(strip=True)
-            else:
-                # fallback a precio "otros"
-                price_alt = c.select_one("p[data-fs-container-price-otros]")
-                price_text = price_alt.get_text(strip=True) if price_alt else None
-
-            price = normalize_price(price_text)
-
-            # ---------- imagen ----------
-            img_el = c.select_one("img")
-            img = img_el["src"] if img_el else None
-
-            # ---------- link ----------
-            link_el = c.select_one("a[data-testid='product-link']")
-            link = "https://www.exito.com" + link_el["href"] if link_el else None
-
-            # Agregar final
-            results.append({
-                "store": "exito",
-                "title": title,
-                "price_raw": price_text,
-                "price": price,
-                "link": link,
-                "img": img
-            })
-        except:
-            continue
+        item = {
+            "store": "Farmatodo",
+            "title": title.get_text(strip=True) if title else None,
+            "price_raw": price.get_text(strip=True) if price else None,
+            "price": _normalize_price(price.get_text()) if price else None,
+            "link": urljoin("https://www.farmatodo.com.co", link["href"]) if link else None,
+            "img": img["src"] if img and img.get("src") else None
+        }
+        results.append(item)
 
     return results
 
 
-
-# ================================================================
-# REBAJA — API VTEX JSON (misma validación que Exito)
-# ================================================================
+# ----------------------------------------------------
+# SCRAPER: REBAJA
+# ----------------------------------------------------
 def scrape_rebaja(query, max_results=10):
-    url = "https://www.larebajavirtual.com/api/catalog_system/pub/products/search/?ft=" + query
-
-    try:
-        r = requests.get(url, headers=HEADERS, timeout=10)
-    except:
-        return []
-
-    # validar JSON
-    try:
-        items = r.json()
-    except ValueError:
-        return []
-
-    if not isinstance(items, list):
-        return []
+    url = f"https://www.larebajavirtual.com/search?query={query}"
+    r = requests.get(url, timeout=10)
+    soup = BeautifulSoup(r.text, "html.parser")
 
     results = []
-    for p in items[:max_results]:
-        try:
-            seller = p["items"][0]["sellers"][0]["commertialOffer"]
-            price = seller["Price"]
-            img = p["items"][0]["images"][0]["imageUrl"]
-            link = p.get("link")
+    cards = soup.select("section.vtex-product-summary-2-x-container")
 
-            results.append({
-                "store": "rebaja",
-                "title": p["productName"],
-                "price_raw": f"${price:,.0f}",
-                "price": float(price),
-                "link": link,
-                "img": img
-            })
-        except:
-            continue
-
-    return results
-
-
-# ================================================================
-# PASTEUR — HTML VTEX (requests + BeautifulSoup)
-# ================================================================
-def scrape_pasteur(query, max_results=10):
-    url = f"https://www.farmaciaspasteur.com.co/{query}?_q={query}&map=ft"
-
-    try:
-        r = requests.get(url, headers=HEADERS, timeout=10)
-    except:
-        return []
-
-    soup = BeautifulSoup(r.text, "lxml")
-    cards = soup.select("div.vtex-flex-layout-0-x-flexCol--col-general-product-info")
-
-    results = []
     for c in cards[:max_results]:
-        try:
-            title = c.select_one("span.vtex-product-summary-2-x-productBrand")
-            price = c.select_one("span.vtex-product-price-1-x-currencyContainer")
-            link = c.select_one("a.vtex-product-summary-2-x-clearLink")
-            img = c.select_one("img.vtex-product-summary-2-x-image")
+        title = c.select_one(".vtex-product-summary-2-x-productNameContainer")
+        price = c.select_one(".vtex-product-price-1-x-sellingPrice")
+        link = c.select_one("a.vtex-product-summary-2-x-clearLink[href]")
+        img = c.select_one(".vtex-product-summary-2-x-imageNormal")
 
-            if not (title and price):
-                continue
-
-            results.append({
-                "store": "pasteur",
-                "title": title.get_text(strip=True),
-                "price_raw": price.get_text(strip=True),
-                "price": normalize_price(price.get_text(strip=True)),
-                "link": "https://www.farmaciaspasteur.com.co" + link["href"] if link else None,
-                "img": img["src"] if img else None
-            })
-        except:
-            continue
+        item = {
+            "store": "Rebaja",
+            "title": title.get_text(strip=True) if title else None,
+            "price_raw": price.get_text(strip=True) if price else None,
+            "price": _normalize_price(price.get_text()) if price else None,
+            "link": link["href"] if link else None,
+            "img": img["src"] if img and img.get("src") else None
+        }
+        results.append(item)
 
     return results
 
 
-# ================================================================
-# CRUZ VERDE — HTML directo (pero validado)
-# ================================================================
+# ----------------------------------------------------
+# SCRAPER: CRUZ VERDE
+# ----------------------------------------------------
 def scrape_cruzverde(query, max_results=10):
     url = f"https://www.cruzverde.com.co/search?query={query}"
-
-    try:
-        r = requests.get(url, headers=HEADERS, timeout=10)
-    except:
-        return []
-
-    soup = BeautifulSoup(r.text, "lxml")
-
-    # Cada producto está en este contenedor
-    cards = soup.select("div.relative.h-full.bg-white.border.rounded-sm")
+    r = requests.get(url, timeout=10)
+    soup = BeautifulSoup(r.text, "html.parser")
 
     results = []
+    cards = soup.select("ml-card-product") or soup.select("article, div")
 
     for c in cards[:max_results]:
-        try:
-            # ---------- Imagen ----------
-            img_el = c.select_one("ml-product-image img")
-            img = img_el["src"] if img_el else None
+        title = c.select_one("a.font-open")
+        price = c.select_one("span.font-bold")
+        link = c.select_one("a[href]")
+        img = c.select_one("img")
 
-            # ---------- Título ----------
-            title_el = c.select_one("a font-open span, a span, a[ id ] span")
-            if not title_el:
-                # fallback más agresivo
-                title_el = c.select_one("a span")
-            title = title_el.get_text(strip=True) if title_el else None
-
-            # ---------- Link ----------
-            link_el = c.select_one("a[href]")
-            link = "https://www.cruzverde.com.co" + link_el["href"] if link_el else None
-
-            # ---------- Precio actual ----------
-            price_el = c.select_one("span.font-bold.text-prices")
-            price_text = price_el.get_text(strip=True) if price_el else None
-            price = normalize_price(price_text)
-
-            # ---------- Precio normal (opcional) ----------
-            normal_el = c.select_one("div.line-through")
-            normal_text = normal_el.get_text(strip=True) if normal_el else None
-
-            results.append({
-                "store": "cruzverde",
-                "title": title,
-                "price_raw": price_text,
-                "price": price,
-                "price_normal": normal_text,
-                "link": link,
-                "img": img,
-            })
-
-        except Exception:
-            continue
+        item = {
+            "store": "Cruz Verde",
+            "title": title.get_text(strip=True) if title else None,
+            "price_raw": price.get_text(strip=True) if price else None,
+            "price": _normalize_price(price.get_text()) if price else None,
+            "link": link["href"] if link else None,
+            "img": img["src"] if img else None
+        }
+        results.append(item)
 
     return results
 
 
+# ----------------------------------------------------
+# SCRAPER: PASTEUR
+# ----------------------------------------------------
+def scrape_pasteur(query, max_results=10):
+    url = f"https://www.farmaciaspasteur.com.co/{query}?_q={query}&map=ft"
+    r = requests.get(url, timeout=10)
+    soup = BeautifulSoup(r.text, "html.parser")
 
-# ================================================================
-# MASTER SCRAPER — SEGURO Y NUNCA FALLA
-# ================================================================
-def scrape_all(query, max_results=6):
-    return {
-        "farmatodo": scrape_farmatodo(query, max_results),
-#       "pasteur": scrape_pasteur(query, max_results),
-        "cruzverde": scrape_cruzverde(query, max_results),
-#       "rebaja": scrape_rebaja(query, max_results),
-        "exito": scrape_exito(query, max_results),
+    results = []
+    cards = soup.select("div.vtex-flex-layout-0-x-flexCol--col-general-product-info")
+
+    for c in cards[:max_results]:
+        title = c.select_one("span.vtex-product-summary-2-x-productBrand")
+        price = c.select_one("span.vtex-product-price-1-x-currencyContainer")
+        link = c.select_one("a.vtex-product-summary-2-x-clearLink[href]")
+        img = c.select_one("img")
+
+        item = {
+            "store": "Pasteur",
+            "title": title.get_text(strip=True) if title else None,
+            "price_raw": price.get_text(strip=True) if price else None,
+            "price": _normalize_price(price.get_text()) if price else None,
+            "link": link["href"] if link else None,
+            "img": img["src"] if img else None
+        }
+        results.append(item)
+
+    return results
+
+
+# ----------------------------------------------------
+# SCRAPER: ÉXITO
+# ----------------------------------------------------
+def scrape_exito(query, max_results=10):
+    url = f"https://www.exito.com/s?q={query}"
+    r = requests.get(url, timeout=10)
+    soup = BeautifulSoup(r.text, "html.parser")
+
+    results = []
+    cards = soup.select("article[class*=productCard]")
+
+    for c in cards[:max_results]:
+        title = c.select_one("h3") or c.select_one("h2")
+        price = c.select_one("p")
+        link = c.select_one("a[href]")
+        img = c.select_one("img")
+
+        item = {
+            "store": "Éxito",
+            "title": title.get_text(strip=True) if title else None,
+            "price_raw": price.get_text(strip=True) if price else None,
+            "price": _normalize_price(price.get_text()) if price else None,
+            "link": urljoin("https://www.exito.com", link["href"]) if link else None,
+            "img": img["src"] if img else None
+        }
+        results.append(item)
+
+    return results
+
+
+# ----------------------------------------------------
+# Ejecutar todos los scrapers
+# ----------------------------------------------------
+def scrape_all(query, max_per_store=6, selected_stores=None):
+    stores = {
+        "Farmatodo": scrape_farmatodo,
+        "Pasteur": scrape_pasteur,
+        "Cruz Verde": scrape_cruzverde,
+        "Rebaja": scrape_rebaja,
+        "Éxito": scrape_exito
     }
+
+    if selected_stores:
+        stores = {k: v for k, v in stores.items() if k in selected_stores}
+
+    out = {}
+    for name, fn in stores.items():
+        try:
+            out[name] = fn(query, max_per_store)
+        except:
+            out[name] = []
+
+    return out

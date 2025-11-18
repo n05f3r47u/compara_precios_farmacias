@@ -1,58 +1,94 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
-
 from scrapers_drg import scrape_all
+import time
 
-st.set_page_config(layout="wide")
-st.title("🔎 Comparador de Precios — Droguerías Colombia")
+st.set_page_config(page_title="Comparador Droguerías", layout="wide")
+
+st.title("🔎 Comparador de precios — Farmatodo · Pasteur · Rebaja · Cruz Verde · Éxito")
+
+# ----------------------------------------------------
+# Opciones
+# ----------------------------------------------------
+with st.sidebar:
+    st.header("Opciones")
+    max_per_store = st.number_input("Máx. productos por tienda", 1, 20, 6)
+
+    store_list = ["Farmatodo", "Pasteur", "Cruz Verde", "Rebaja", "Éxito"]
+    selected_stores = st.multiselect("Tiendas a consultar", store_list, default=store_list)
+
+    run_button = st.button("Buscar")
 
 query = st.text_input("Producto a buscar", "dolex")
-max_results = st.number_input("Máx. resultados por tienda", 1, 20, 6)
 
-if st.button("Buscar"):
-    st.info("Buscando productos...")
+# ----------------------------------------------------
+# Ejecutar scraping
+# ----------------------------------------------------
+if run_button and query.strip():
+    st.info("Buscando productos…")
+    start = time.time()
 
-    data = scrape_all(query, max_results)
+    data = scrape_all(query.strip(), max_per_store=max_per_store, selected_stores=selected_stores)
 
+    elapsed = time.time() - start
+    st.success(f"Búsqueda completada en {elapsed:.1f} s")
+
+    # Convertir a DataFrame
     rows = []
     for store, items in data.items():
         for it in items:
             rows.append({
-                "seleccionar": False,
                 "tienda": store,
-                "titulo": it.get("title"),
-                "precio_raw": it.get("price_raw"),
-                "precio": it.get("price"),
-                "link": it.get("link"),
-                "img": it.get("img")
+                "titulo": it["title"],
+                "precio_raw": it["price_raw"],
+                "precio": it["price"],
+                "link": it["link"],
+                "img": it["img"]
             })
+
+    if not rows:
+        st.warning("No se encontraron productos.")
+        st.stop()
 
     df = pd.DataFrame(rows)
 
-    # Asegurar que la columna 'seleccionar' exista SIEMPRE
-    if "seleccionar" not in df.columns:
-        df["seleccionar"] = False
+    # Mostrar tabla
+    st.subheader("Resultados")
+    st.dataframe(df.sort_values("precio", na_position="last"))
 
-    st.subheader("Resultados (selecciona productos)")
-    edited_df = st.data_editor(
-        df,
-        use_container_width=True,
-        hide_index=True
-    )
+    # ----------------------------------------------------
+    # Mejor precio por tienda
+    # ----------------------------------------------------
+    st.subheader("Mejor precio por tienda")
+    best = df.dropna(subset=["precio"]).groupby("tienda", as_index=False).apply(
+        lambda g: g.nsmallest(1, "precio")
+    ).reset_index(drop=True)
+    st.table(best)
 
-    # Filtrar seleccionados de forma segura
-    selected = edited_df[edited_df.get("seleccionar", False) == True]
-
-    if len(selected) > 0:
-        st.subheader("📊 Comparación de precios — seleccionados")
-
-        fig, ax = plt.subplots(figsize=(10, 4))
-        ax.scatter(selected["precio"], selected["tienda"])
+    # ----------------------------------------------------
+    # Gráfico solo si hay datos
+    # ----------------------------------------------------
+    if df["precio"].notna().any() and st.checkbox("Mostrar gráfico de comparación"):
+        plot_df = df.dropna(subset=["precio"]).sort_values("precio")
+        fig, ax = plt.subplots(figsize=(7, 4))
+        ax.barh(plot_df["tienda"], plot_df["precio"])
         ax.set_xlabel("Precio (COP)")
-        ax.set_ylabel("Tienda")
         ax.set_title("Comparación de precios")
-
         st.pyplot(fig)
-    else:
-        st.info("No se seleccionó ningún producto para graficar.")
+
+    # ----------------------------------------------------
+    # Tarjetas visuales
+    # ----------------------------------------------------
+    st.subheader("Previsualización")
+    for _, r in df.iterrows():
+        cols = st.columns([1, 4])
+        with cols[0]:
+            st.image(r["img"] or "", width=120)
+        with cols[1]:
+            st.markdown(f"""
+            **{r['titulo']}**  
+            **Tienda:** {r['tienda']}  
+            **Precio:** {r['precio_raw']}  
+            [Ver producto]({r['link']})
+            """)
