@@ -161,7 +161,7 @@ def scrape_exito(query, max_results=10):
         img = c.select_one("img")
 
         results.append({
-            "store": "Éxito",
+            "store": "Exito",
             "title": title.get_text(strip=True) if title else None,
             "price_raw": price.get_text(strip=True) if price else None,
             "price": _normalize_price(price.get_text()) if price else None,
@@ -181,7 +181,7 @@ def scrape_all(query, max_per_store=6, selected_stores=None):
         "Pasteur": scrape_pasteur,
         "Cruz Verde": scrape_cruzverde,
         "Rebaja": scrape_rebaja,
-        "Éxito": scrape_exito
+        "Exito": scrape_exito
     }
 
     if selected_stores:
