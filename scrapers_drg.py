@@ -149,27 +149,46 @@ def scrape_exito(query, max_results=10):
     r = requests.get(url, timeout=10)
     soup = BeautifulSoup(r.text, "html.parser")
 
-    cards = soup.select("article[class*=productCard]")
+    cards = soup.select("article[class*=productCard_productCard]")
     results = []
 
     for c in cards[:max_results]:
-        title = c.select_one("h3[data-testid=product-name]") or c.select_one("h3") or c.select_one("h2")
-        price = (c.select_one("p[data-fs-price-final]")
-                 or c.select_one("p[data-fs-container-price-otros]")
-                 or c.select_one("p"))
-        link = c.select_one("a[data-testid=product-link]")
-        img = c.select_one("img")
+
+        # TÍTULO
+        title_el = c.select_one("h3.styles_name__qQJiK") \
+                    or c.select_one("h3") \
+                    or c.select_one("h2")
+
+        # PRECIO
+        price_el = c.select_one("p[data-fs-container-price-otros=true]") \
+                    or c.select_one("p[data-fs-price-final]") \
+                    or c.select_one("p")
+
+        # LINK
+        link_el = c.select("a[data-testid=product-link]")
+        link = None
+        if link_el:
+            link = link_el[0].get("href")
+            if link and not link.startswith("http"):
+                link = urljoin("https://www.exito.com", link)
+
+        # IMAGEN
+        img_el = c.select_one("a[data-testid=product-link] img")
+        img = None
+        if img_el:
+            img = img_el.get("src") or img_el.get("data-src")
 
         results.append({
-            "store": "Exito",
-            "title": title.get_text(strip=True) if title else None,
-            "price_raw": price.get_text(strip=True) if price else None,
-            "price": _normalize_price(price.get_text()) if price else None,
-            "link": urljoin("https://www.exito.com", link["href"]) if link else None,
-            "img": img.get("src") or img.get("data-src") if img else None
+            "store": "Éxito",
+            "title": title_el.get_text(strip=True) if title_el else None,
+            "price_raw": price_el.get_text(strip=True) if price_el else None,
+            "price": _normalize_price(price_el.get_text()) if price_el else None,
+            "link": link,
+            "img": img
         })
 
     return results
+
 
 
 # ----------------------------------------------------
