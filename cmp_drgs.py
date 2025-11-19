@@ -15,8 +15,8 @@ with st.sidebar:
     st.header("Opciones")
     max_per_store = st.number_input("Máx. productos por tienda", 1, 20, 6)
 
-    store_list = ["Farmatodo", "Pasteur", "Cruz Verde", "Rebaja", "Éxito"]
-    selected_stores = st.multiselect("Tiendas a consultar", store_list, default=store_list)
+    #store_list = ["Farmatodo", "Pasteur", "Cruz Verde", "Rebaja", "Éxito"]
+    #selected_stores = st.multiselect("Tiendas a consultar", store_list, default=store_list)
 
     run_button = st.button("Buscar")
 

@@ -338,8 +338,8 @@ def scrape_exito(query, max_results=10):
 # ====================================================
 # EJECUTAR TODAS LAS TIENDAS
 # ====================================================
-def scrape_all(query, max_per_store=6, selected_stores=None):
-
+#def scrape_all(query, max_per_store=6, selected_stores=None):
+def scrape_all(query, max_per_store=6):
     stores = {
         "Farmatodo": scrape_farmatodo,
         "Pasteur": scrape_pasteur,
@@ -349,8 +349,8 @@ def scrape_all(query, max_per_store=6, selected_stores=None):
     }
 
     # Filtrar tiendas seleccionadas
-    if selected_stores:
-        stores = {k: fn for k, fn in stores.items() if k in selected_stores}
+    #if selected_stores:
+    #    stores = {k: fn for k, fn in stores.items() if k in selected_stores}
 
     out = {}
 
