@@ -173,14 +173,14 @@ def scrape_cruzverde(query, max_results=10):
 # PASTEUR — FIX multi-palabra y mejor endpoint VTEX
 # ----------------------------------------------------
 def scrape_pasteur(query, max_results=10):
-    base = "https://www.farmaciaspasteur.com.co"
+    base = "https://www.farmaciaspasteur.com.co/{query}?_q={query}&map=ft"
 
-    soup = _get_soup(
-        f"{base}/",
-        params={"":query, "map": "ft"},
-        log_prefix="pasteur"
-    )
-
+    #soup = _get_soup(
+    #    f"{base}/",
+    #    params={"":query, "map": "ft"},
+    #    log_prefix="pasteur"
+    #)
+    soup = _get_soup(base, log_prefix="farmatodo")
     if not soup:
         return []
 
