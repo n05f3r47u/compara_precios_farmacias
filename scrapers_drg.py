@@ -167,9 +167,6 @@ def scrape_rebaja(query, max_results=10):
 # ----------------------------------------------------
 # 3. CRUZ VERDE
 # ----------------------------------------------------
-from urllib.parse import quote
-from bs4 import BeautifulSoup
-from urllib.parse import urljoin
 import requests
 
 def scrape_cruzverde(query, max_results=10):
@@ -206,7 +203,7 @@ def scrape_cruzverde(query, max_results=10):
             img = img_el.get("src") if img_el else None
 
             results.append({
-                "store": "Pasteur",
+                "store": "Cruzverde",
                 "title": title_el.get_text(strip=True) if title_el else None,
                 "price_raw": price_el.get_text(strip=True) if price_el else None,
                 "price": _normalize_price(price_el.get_text()) if price_el else None,
