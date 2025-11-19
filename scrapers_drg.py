@@ -23,7 +23,7 @@ DEFAULT_HEADERS = {
     ),
 }
 
-ENABLE_LOGS = True   # cambiar a True solo si quieres logs en _logs/
+ENABLE_LOGS = False   # cambiar a True solo si quieres logs en _logs/
 # Habilita logs HTML si necesitas depuración
 
 
@@ -167,8 +167,6 @@ def scrape_rebaja(query, max_results=10):
 # ----------------------------------------------------
 # 3. CRUZ VERDE
 # ----------------------------------------------------
-import requests
-
 def scrape_cruzverde(query, max_results=10):
     base = "https://www.cruzverde.com.co"
 
@@ -181,7 +179,7 @@ def scrape_cruzverde(query, max_results=10):
         return []
 
     cards = soup.select("ml-card-product")
-    print({url})
+    print({cards})
     if not cards:
         cards = soup.select("article, div")
 
