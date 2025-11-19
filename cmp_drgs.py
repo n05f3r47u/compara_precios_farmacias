@@ -29,8 +29,8 @@ if run_button and query.strip():
     st.info("Buscando productos…")
     start = time.time()
 
-    data = scrape_all(query.strip(), max_per_store=max_per_store, selected_stores=selected_stores)
-
+    #data = scrape_all(query.strip(), max_per_store=max_per_store, selected_stores=selected_stores)
+    data = scrape_all(query.strip(), max_per_store=max_per_store)
     elapsed = time.time() - start
     st.success(f"Búsqueda completada en {elapsed:.1f} s")
 
