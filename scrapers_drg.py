@@ -23,8 +23,8 @@ DEFAULT_HEADERS = {
     ),
 }
 
+ENABLE_LOGS = True   # cambiar a True solo si quieres logs en _logs/
 # Habilita logs HTML si necesitas depuración
-ENABLE_LOGS = False   # cambiar a True solo si quieres logs en _logs/
 
 
 # ----------------------------------------------------
