@@ -167,67 +167,46 @@ def scrape_rebaja(query, max_results=10):
 # ----------------------------------------------------
 # 3. CRUZ VERDE
 # ----------------------------------------------------
-from urllib.parse import quote  # si no lo has importado
-
 from urllib.parse import quote
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
+import requests
 
 def scrape_cruzverde(query, max_results=10):
-    base = "https://www.cruzverde.com.co"
-    q = quote(query)
+    try:
+        q = quote(query)
+        url = f"https://www.cruzverde.com.co/s/-/dw/data/v22_3/products/search?q={q}&count={max_results}"
 
-    # URL correcta
-    url = f"{base}/search?query={q}"
+        r = requests.get(url, timeout=10)
+        if r.status_code != 200:
+            print("Error API Cruz Verde:", r.status_code)
+            return []
 
-    soup = _get_soup(url, log_prefix="cruzverde")
-    if not soup:
-        return []
+        data = r.json()
+        results = []
 
-    results = []
-
-    # Cada producto está dentro de <ml-card-product>
-    cards = soup.select("ml-card-product")
-
-    for c in cards[:max_results]:
-        try:
-            # ---- TÍTULO ----
-            title_el = c.select_one("at-link a span")
-            title = title_el.get_text(strip=True) if title_el else None
-
-            # ---- LINK ----
-            link_el = c.select_one("at-link a[href]")
-            link = urljoin(base, link_el["href"]) if link_el else None
-
-            # ---- IMAGEN ----
-            img_el = c.select_one("ml-product-image img")
-            img = img_el.get("src") if img_el else None
-
-            # ---- PRECIO ----
-            price_el = c.select_one("#club-price span.font-bold")
-            if price_el:
-                price_raw = price_el.get_text(strip=True)
-                price = _normalize_price(price_raw)
-            else:
-                # fallback al precio normal
-                normal_el = c.select_one(".line-through")
-                price_raw = normal_el.get_text(strip=True) if normal_el else None
-                price = _normalize_price(price_raw) if price_raw else None
+        for p in data.get("hits", []):
+            title = p.get("product_name")
+            link = f"https://www.cruzverde.com.co{p.get('link')}"
+            price = p.get("price")
+            img = p.get("image", {}).get("link") if p.get("image") else None
+            price_raw = f"$ {price:,.0f}".replace(",", ".")
 
             results.append({
                 "store": "Cruz Verde",
                 "title": title,
-                "price_raw": price_raw,
                 "price": price,
+                "price_raw": price_raw,
                 "link": link,
                 "img": img
             })
 
-        except Exception as e:
-            print("Error parseando Cruz Verde:", e)
-            continue
+        return results
 
-    return results
+    except Exception as e:
+        print("Error Cruz Verde:", e)
+        return []
+
 
 
 
