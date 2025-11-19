@@ -173,39 +173,71 @@ from urllib.parse import urljoin
 import requests
 
 def scrape_cruzverde(query, max_results=10):
-    try:
-        q = quote(query)
-        url = f"https://www.cruzverde.com.co/s/-/dw/data/v22_3/products/search?q={q}&count={max_results}"
+    base = "https://www.cruzverde.com.co"
 
-        r = requests.get(url, timeout=10)
-        if r.status_code != 200:
-            print("Error API Cruz Verde:", r.status_code)
-            return []
+    url = (
+        f"{base}/on/demandware.store/"
+        f"Sites-cruzverdeCO-Site/es_CO/Search-UpdateGrid"
+        f"?q={quote(query)}&start=0&sz={max_results}"
+    )
 
-        data = r.json()
-        results = []
+    soup = _get_soup(url, log_prefix="cruzverde")
+    if not soup:
+        return []
 
-        for p in data.get("hits", []):
-            title = p.get("product_name")
-            link = f"https://www.cruzverde.com.co{p.get('link')}"
-            price = p.get("price")
-            img = p.get("image", {}).get("link") if p.get("image") else None
-            price_raw = f"$ {price:,.0f}".replace(",", ".")
+    # Cada producto está dentro de <ml-card-product>
+    cards = soup.select("ml-card-product")
+    if not cards:
+        # Fallback: algunos ambientes usan otro contenedor
+        cards = soup.select("div.product-grid, div.product-tile, article")
+
+    results = []
+
+    for c in cards[:max_results]:
+        try:
+            # TÍTULO
+            title_el = (
+                c.select_one("a[id] span")
+                or c.select_one("a[id]")
+                or c.select_one(".font-semibold")
+            )
+            title = title_el.get_text(strip=True) if title_el else None
+
+            # LINK DEL PRODUCTO
+            link_el = c.select_one("a[href]")
+            raw_link = link_el.get("href") if link_el else None
+            link = urljoin(base, raw_link) if raw_link else None
+
+            # IMAGEN
+            img_el = (
+                c.select_one("img")
+                or c.select_one("ml-product-image img")
+            )
+            img = img_el.get("src") if img_el else None
+
+            # PRECIO
+            price_el = (
+                c.select_one("#club-price span.font-bold")
+                or c.select_one("span.font-bold")
+                or c.select_one("span.text-prices")
+                or c.select_one("ml-price-tag span")
+            )
+            price_raw = price_el.get_text(strip=True) if price_el else None
+            price = _normalize_price(price_raw)
 
             results.append({
                 "store": "Cruz Verde",
                 "title": title,
-                "price": price,
                 "price_raw": price_raw,
+                "price": price,
                 "link": link,
-                "img": img
+                "img": img,
             })
 
-        return results
+        except:
+            continue
 
-    except Exception as e:
-        print("Error Cruz Verde:", e)
-        return []
+    return results
 
 
 
