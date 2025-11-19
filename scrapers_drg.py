@@ -167,34 +167,50 @@ def scrape_rebaja(query, max_results=10):
 # ----------------------------------------------------
 # 3. CRUZ VERDE
 # ----------------------------------------------------
-def scrape_cruzverde(query, max_results=10):
-    soup = _get_soup(
-        "https://www.cruzverde.com.co/search",
-        params={"query": query},
-        log_prefix="cruzverde"
-    )
+from urllib.parse import quote  # si no lo has importado
 
+def scrape_cruzverde(query, max_results=10):
+    base = "https://www.cruzverde.com.co"
+    # Construir URL de búsqueda con query param
+    q = quote(query)  # codifica espacios y caracteres especiales
+    url = f"{base}/search?query={q}"
+
+    soup = _get_soup(url, log_prefix="cruzverde")
     if not soup:
         return []
 
-    cards = soup.select("article.product-card") or soup.select("ml-card-product")
     results = []
+
+    # Intentar detectar productos: buscar tarjetas de producto
+    # A partir de inspección manual, podrían usarse estas clases:
+    cards = soup.select("article.product-card") or soup.select("div.product-card")
 
     for c in cards[:max_results]:
         try:
-            title_el = (
-                c.select_one(".product-name")
-                or c.select_one("h3")
-            )
-            price_el = (
-                c.select_one("span.product-price")
-                or c.select_one("span.font-bold")
-            )
-            link_el = c.select_one("a[href]")
-            img_el = c.select_one("img")
+            # Nombre del producto
+            title_el = c.select_one("h3") or c.select_one("a.product-card__name") or c.select_one(".product-name")
 
-            link = link_el.get("href") if link_el else None
-            img = img_el.get("src") if img_el else None
+            # Precio: intentar varios selectores
+            price_el = (
+                c.select_one("span.price") or
+                c.select_one(".product-card__price") or
+                c.select_one("div.price") or
+                c.select_one("p")
+            )
+
+            # Link al producto
+            link_el = c.select_one("a[href]")
+            link = None
+            if link_el:
+                href = link_el.get("href")
+                # Si es ruta relativa
+                link = urljoin(base, href) if href.startswith("/") else href
+
+            # Imagen
+            img_el = c.select_one("img")
+            img = None
+            if img_el:
+                img = img_el.get("src") or img_el.get("data-src")
 
             results.append({
                 "store": "Cruz Verde",
@@ -202,12 +218,16 @@ def scrape_cruzverde(query, max_results=10):
                 "price_raw": price_el.get_text(strip=True) if price_el else None,
                 "price": _normalize_price(price_el.get_text()) if price_el else None,
                 "link": link,
-                "img": img,
+                "img": img
             })
-        except:
+
+        except Exception as e:
+            # Si hay un error en una tarjeta, lo ignoramos
+            print(f"Error parseando producto Cruz Verde: {e}")
             continue
 
     return results
+
 
 
 # ----------------------------------------------------
