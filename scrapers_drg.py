@@ -179,7 +179,7 @@ def scrape_cruzverde(query, max_results=10):
         return []
 
     cards = soup.select("ml-card-product")
-    print({soup})
+    print({url})
     if not cards:
         cards = soup.select("article, div")
 
