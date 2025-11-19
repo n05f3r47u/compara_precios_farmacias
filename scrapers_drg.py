@@ -176,9 +176,7 @@ def scrape_cruzverde(query, max_results=10):
     base = "https://www.cruzverde.com.co"
 
     url = (
-        f"{base}/on/demandware.store/"
-        f"Sites-cruzverdeCO-Site/es_CO/Search-UpdateGrid"
-        f"?q={quote(query)}&start=0&sz={max_results}"
+        f"{base}/search?query={query}"
     )
 
     soup = _get_soup(url, log_prefix="cruzverde")
