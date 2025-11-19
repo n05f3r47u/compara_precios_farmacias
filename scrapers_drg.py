@@ -183,55 +183,35 @@ def scrape_cruzverde(query, max_results=10):
     if not soup:
         return []
 
-    # Cada producto está dentro de <ml-card-product>
-    cards = soup.select("ml-card-product")
+     cards = soup.select("ml-card-product")
     if not cards:
-        # Fallback: algunos ambientes usan otro contenedor
-        cards = soup.select("div.product-grid, div.product-tile, article")
+        cards = soup.select("article, div")
 
     results = []
 
     for c in cards[:max_results]:
         try:
-            # TÍTULO
-            title_el = (
-                c.select_one("a[id] span")
-                or c.select_one("a[id]")
-                or c.select_one(".font-semibold")
-            )
-            title = title_el.get_text(strip=True) if title_el else None
+            title_el = c.select_one("a.font-open.flex.items-center")
+            price_el = c.select_one("span.font-bold.tex-.prices")
+            link_el = c.select_one("a.font-open.flex.items-center[href]")
+            img_el = c.select_one("img.ng-tns-c36-165") or c.select_one("img")
 
-            # LINK DEL PRODUCTO
-            link_el = c.select_one("a[href]")
-            raw_link = link_el.get("href") if link_el else None
-            link = urljoin(base, raw_link) if raw_link else None
+            # procesar link
+            href = None
+            if link_el:
+                raw = link_el.get("href")
+                href = urljoin(base, raw) if raw.startswith("/") else raw
 
-            # IMAGEN
-            img_el = (
-                c.select_one("img")
-                or c.select_one("ml-product-image img")
-            )
             img = img_el.get("src") if img_el else None
 
-            # PRECIO
-            price_el = (
-                c.select_one("#club-price span.font-bold")
-                or c.select_one("span.font-bold")
-                or c.select_one("span.text-prices")
-                or c.select_one("ml-price-tag span")
-            )
-            price_raw = price_el.get_text(strip=True) if price_el else None
-            price = _normalize_price(price_raw)
-
             results.append({
-                "store": "Cruz Verde",
-                "title": title,
-                "price_raw": price_raw,
-                "price": price,
-                "link": link,
-                "img": img,
+                "store": "Pasteur",
+                "title": title_el.get_text(strip=True) if title_el else None,
+                "price_raw": price_el.get_text(strip=True) if price_el else None,
+                "price": _normalize_price(price_el.get_text()) if price_el else None,
+                "link": href,
+                "img": img
             })
-
         except:
             continue
 
