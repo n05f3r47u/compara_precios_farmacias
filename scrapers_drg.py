@@ -183,7 +183,7 @@ def scrape_cruzverde(query, max_results=10):
     if not soup:
         return []
 
-     cards = soup.select("ml-card-product")
+     cards = soup.select("ml-card-product.ng-star-inserted")
     if not cards:
         cards = soup.select("article, div")
 
