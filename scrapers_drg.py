@@ -216,9 +216,12 @@ def scrape_cruzverde(query, max_results=10):
 def scrape_pasteur(query, max_results=10):
     base = "https://www.farmaciaspasteur.com.co"
 
-    # Codificar la parte del PATH
-    q_path = quote(query)
-    url = f"{base}/{q_path}?_q={query}&map=ft"
+    # Separar solo la primera palabra para el PATH
+    parts = query.split()
+    first = quote(parts[0])  # primera palabra codificada
+    full_q = query.strip()
+
+    url = f"{base}/{first}?_q={full_q}&map=ft"
 
     soup = _get_soup(url, log_prefix="pasteur")
 
@@ -261,6 +264,7 @@ def scrape_pasteur(query, max_results=10):
             continue
 
     return results
+
 
 
 # ----------------------------------------------------
