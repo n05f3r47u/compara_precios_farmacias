@@ -169,10 +169,15 @@ def scrape_rebaja(query, max_results=10):
 # ----------------------------------------------------
 from urllib.parse import quote  # si no lo has importado
 
+from urllib.parse import quote
+from bs4 import BeautifulSoup
+from urllib.parse import urljoin
+
 def scrape_cruzverde(query, max_results=10):
     base = "https://www.cruzverde.com.co"
-    # Construir URL de búsqueda con query param
-    q = quote(query)  # codifica espacios y caracteres especiales
+    q = quote(query)
+
+    # URL correcta
     url = f"{base}/search?query={q}"
 
     soup = _get_soup(url, log_prefix="cruzverde")
@@ -181,52 +186,49 @@ def scrape_cruzverde(query, max_results=10):
 
     results = []
 
-    # Intentar detectar productos: buscar tarjetas de producto
-    # A partir de inspección manual, podrían usarse estas clases:
-    cards = soup.select("article.product-card") or soup.select("div.product-card")
+    # Cada producto está dentro de <ml-card-product>
+    cards = soup.select("ml-card-product")
 
     for c in cards[:max_results]:
         try:
-            # Nombre del producto
-            title_el = c.select_one("h3") or c.select_one("a.product-card__name") or c.select_one(".product-name")
+            # ---- TÍTULO ----
+            title_el = c.select_one("at-link a span")
+            title = title_el.get_text(strip=True) if title_el else None
 
-            # Precio: intentar varios selectores
-            price_el = (
-                c.select_one("span.price") or
-                c.select_one(".product-card__price") or
-                c.select_one("div.price") or
-                c.select_one("p")
-            )
+            # ---- LINK ----
+            link_el = c.select_one("at-link a[href]")
+            link = urljoin(base, link_el["href"]) if link_el else None
 
-            # Link al producto
-            link_el = c.select_one("a[href]")
-            link = None
-            if link_el:
-                href = link_el.get("href")
-                # Si es ruta relativa
-                link = urljoin(base, href) if href.startswith("/") else href
+            # ---- IMAGEN ----
+            img_el = c.select_one("ml-product-image img")
+            img = img_el.get("src") if img_el else None
 
-            # Imagen
-            img_el = c.select_one("img")
-            img = None
-            if img_el:
-                img = img_el.get("src") or img_el.get("data-src")
+            # ---- PRECIO ----
+            price_el = c.select_one("#club-price span.font-bold")
+            if price_el:
+                price_raw = price_el.get_text(strip=True)
+                price = _normalize_price(price_raw)
+            else:
+                # fallback al precio normal
+                normal_el = c.select_one(".line-through")
+                price_raw = normal_el.get_text(strip=True) if normal_el else None
+                price = _normalize_price(price_raw) if price_raw else None
 
             results.append({
                 "store": "Cruz Verde",
-                "title": title_el.get_text(strip=True) if title_el else None,
-                "price_raw": price_el.get_text(strip=True) if price_el else None,
-                "price": _normalize_price(price_el.get_text()) if price_el else None,
+                "title": title,
+                "price_raw": price_raw,
+                "price": price,
                 "link": link,
                 "img": img
             })
 
         except Exception as e:
-            # Si hay un error en una tarjeta, lo ignoramos
-            print(f"Error parseando producto Cruz Verde: {e}")
+            print("Error parseando Cruz Verde:", e)
             continue
 
     return results
+
 
 
 
