@@ -1,59 +1,70 @@
-# scrapers_drg.py (versión completa con logs y correcciones finales)
-
 import requests
 from bs4 import BeautifulSoup
-from urllib.parse import urljoin
+from urllib.parse import urljoin, quote
 import re
 import time
 import os
 
 
 # ----------------------------------------------------
-# Headers comunes para evitar bloqueos
+# CONFIGURACIÓN GLOBAL
 # ----------------------------------------------------
+
+# Headers para evitar bloqueos por parte de las tiendas
 DEFAULT_HEADERS = {
     "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/121.0.0.0 Safari/537.36"
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
     ),
     "Accept-Language": "es-CO,es;q=0.9,en;q=0.8",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+    "Accept": (
+        "text/html,application/xhtml+xml,application/xml;q=0.9,"
+        "image/avif,image/webp,*/*;q=0.8"
+    ),
 }
+
+# Habilita logs HTML si necesitas depuración
+ENABLE_LOGS = False   # cambiar a True solo si quieres logs en _logs/
 
 
 # ----------------------------------------------------
-# Función utilitaria con logs automáticos
-# Guarda HTML parcial si el sitio no devuelve productos
+# UTILIDAD: obtener BeautifulSoup con reintentos
 # ----------------------------------------------------
 def _get_soup(url, params=None, retries=2, timeout=10, log_prefix=None):
     """
-    Ejecuta GET con headers, reintentos y logging si algo falla.
+    GET con headers, manejo de errores y logs opcionales.
     Retorna BeautifulSoup o None.
     """
+
     for attempt in range(retries + 1):
         try:
-            r = requests.get(url, params=params, headers=DEFAULT_HEADERS, timeout=timeout)
+            r = requests.get(
+                url,
+                params=params,
+                headers=DEFAULT_HEADERS,
+                timeout=timeout,
+            )
 
-            # Guardar respuesta parcial si hay problemas
-            if log_prefix:
+            # Guardar log del HTML si está habilitado
+            if ENABLE_LOGS and log_prefix:
                 os.makedirs("_logs", exist_ok=True)
                 with open(f"_logs/{log_prefix}_attempt{attempt}.html", "w", encoding="utf-8") as f:
-                    f.write(r.text[:20])
+                    f.write(r.text[:20000])
 
-            if r.status_code == 200 and r.text:
+            # Respuesta válida
+            if r.status_code == 200 and r.text.strip():
                 return BeautifulSoup(r.text, "html.parser")
 
-            time.sleep(0.6 * (attempt + 1))
+        except Exception:
+            pass
 
-        except Exception as e:
-            time.sleep(0.6 * (attempt + 1))
+        time.sleep(0.5 * (attempt + 1))
 
     return None
 
 
 # ----------------------------------------------------
-# Normalizar precio
+# UTILIDAD: Normalización del precio
 # ----------------------------------------------------
 def _normalize_price(text):
     if not text:
@@ -66,13 +77,17 @@ def _normalize_price(text):
         return None
 
 
+# ====================================================
+# SCRAPERS (5 FARMACIAS)
+# ====================================================
+
 # ----------------------------------------------------
-# FARMATODO (estable)
+# 1. FARMATODO
 # ----------------------------------------------------
 def scrape_farmatodo(query, max_results=10):
     url = f"https://www.farmatodo.com.co/buscar?product={query}&departamento=Todos"
-
     soup = _get_soup(url, log_prefix="farmatodo")
+
     if not soup:
         return []
 
@@ -81,18 +96,24 @@ def scrape_farmatodo(query, max_results=10):
 
     for c in cards[:max_results]:
         try:
-            title = c.select_one("p.text-title")
-            price = c.select_one("span.price__text-price")
-            link = c.select_one("a[href]")
-            img = c.select_one("img")
+            title_el = c.select_one("p.text-title")
+            price_el = c.select_one("span.price__text-price")
+            link_el = c.select_one("a[href]")
+            img_el = c.select_one("img")
+
+            link = (
+                urljoin("https://www.farmatodo.com.co", link_el["href"])
+                if link_el else None
+            )
+            img = img_el.get("src") if img_el else None
 
             results.append({
                 "store": "Farmatodo",
-                "title": title.get_text(strip=True) if title else None,
-                "price_raw": price.get_text(strip=True) if price else None,
-                "price": _normalize_price(price.get_text()) if price else None,
-                "link": urljoin("https://www.farmatodo.com.co", link.get("href")) if link else None,
-                "img": img.get("src") if img else None
+                "title": title_el.get_text(strip=True) if title_el else None,
+                "price_raw": price_el.get_text(strip=True) if price_el else None,
+                "price": _normalize_price(price_el.get_text()) if price_el else None,
+                "link": link,
+                "img": img
             })
         except:
             continue
@@ -101,12 +122,15 @@ def scrape_farmatodo(query, max_results=10):
 
 
 # ----------------------------------------------------
-# REBAJA (VTEX estable)
+# 2. LA REBAJA
 # ----------------------------------------------------
 def scrape_rebaja(query, max_results=10):
-    url = f"https://www.larebajavirtual.com/search"
+    soup = _get_soup(
+        "https://www.larebajavirtual.com/search",
+        params={"query": query},
+        log_prefix="rebaja"
+    )
 
-    soup = _get_soup(url, params={"query": query}, log_prefix="rebaja")
     if not soup:
         return []
 
@@ -115,19 +139,24 @@ def scrape_rebaja(query, max_results=10):
 
     for c in cards[:max_results]:
         try:
-            title = c.select_one(".vtex-product-summary-2-x-productNameContainer")
-            price = c.select_one(".vtex-product-price-1-x-sellingPriceValue") or \
-                    c.select_one(".vtex-product-price-1-x-sellingPrice")
-            link = c.select_one("a.vtex-product-summary-2-x-clearLink[href]")
-            img = c.select_one(".vtex-product-summary-2-x-imageNormal")
+            title_el = c.select_one(".vtex-product-summary-2-x-productNameContainer")
+            price_el = (
+                c.select_one(".vtex-product-price-1-x-sellingPriceValue")
+                or c.select_one(".vtex-product-price-1-x-sellingPrice")
+            )
+            link_el = c.select_one("a.vtex-product-summary-2-x-clearLink[href]")
+            img_el = c.select_one(".vtex-product-summary-2-x-imageNormal")
+
+            link = link_el["href"] if link_el else None
+            img = img_el.get("src") if img_el else None
 
             results.append({
                 "store": "Rebaja",
-                "title": title.get_text(strip=True) if title else None,
-                "price_raw": price.get_text(strip=True) if price else None,
-                "price": _normalize_price(price.get_text()) if price else None,
-                "link": link.get("href") if link else None,
-                "img": img.get("src") if img else None
+                "title": title_el.get_text(strip=True) if title_el else None,
+                "price_raw": price_el.get_text(strip=True) if price_el else None,
+                "price": _normalize_price(price_el.get_text()) if price_el else None,
+                "link": link,
+                "img": img
             })
         except:
             continue
@@ -136,12 +165,15 @@ def scrape_rebaja(query, max_results=10):
 
 
 # ----------------------------------------------------
-# CRUZ VERDE
+# 3. CRUZ VERDE
 # ----------------------------------------------------
 def scrape_cruzverde(query, max_results=10):
-    url = f"https://www.cruzverde.com.co/search"
+    soup = _get_soup(
+        "https://www.cruzverde.com.co/search",
+        params={"query": query},
+        log_prefix="cruzverde"
+    )
 
-    soup = _get_soup(url, params={"query": query}, log_prefix="cruzverde")
     if not soup:
         return []
 
@@ -150,18 +182,27 @@ def scrape_cruzverde(query, max_results=10):
 
     for c in cards[:max_results]:
         try:
-            title = c.select_one("h3") or c.select_one(".product-name")
-            price = c.select_one("span.product-price") or c.select_one("span.font-bold")
-            link = c.select_one("a[href]")
-            img = c.select_one("img")
+            title_el = (
+                c.select_one(".product-name")
+                or c.select_one("h3")
+            )
+            price_el = (
+                c.select_one("span.product-price")
+                or c.select_one("span.font-bold")
+            )
+            link_el = c.select_one("a[href]")
+            img_el = c.select_one("img")
+
+            link = link_el.get("href") if link_el else None
+            img = img_el.get("src") if img_el else None
 
             results.append({
                 "store": "Cruz Verde",
-                "title": title.get_text(strip=True) if title else None,
-                "price_raw": price.get_text(strip=True) if price else None,
-                "price": _normalize_price(price.get_text()) if price else None,
-                "link": link.get("href") if link else None,
-                "img": img.get("src") if img else None
+                "title": title_el.get_text(strip=True) if title_el else None,
+                "price_raw": price_el.get_text(strip=True) if price_el else None,
+                "price": _normalize_price(price_el.get_text()) if price_el else None,
+                "link": link,
+                "img": img,
             })
         except:
             continue
@@ -170,31 +211,21 @@ def scrape_cruzverde(query, max_results=10):
 
 
 # ----------------------------------------------------
-# PASTEUR — FIX multi-palabra y mejor endpoint VTEX
+# 4. PASTEUR (FIX: query multi-palabra)
 # ----------------------------------------------------
-from urllib.parse import quote
-
 def scrape_pasteur(query, max_results=10):
     base = "https://www.farmaciaspasteur.com.co"
 
-    # Codificar query para incluirlo en la ruta y en parámetros
-    q_path = quote(query)               # parte del path
-    q_param = query                     # parte del parámetro, requests la codifica
+    # Codificar la parte del PATH
+    q_path = quote(query)
+    url = f"{base}/{q_path}?_q={query}&map=ft"
 
-    # URL REAL que usa Pasteur
-    url = f"{base}/{q_path}?_q={q_param}&map=ft"
-
-    # Obtener HTML
     soup = _get_soup(url, log_prefix="pasteur")
+
     if not soup:
         return []
 
-    # Extractor principal de VTEX
-    cards = soup.select(
-        "div.vtex-flex-layout-0-x-flexCol--col-general-product-info"
-    )
-
-    # fallback si cambian la plantilla
+    cards = soup.select("div.vtex-flex-layout-0-x-flexCol--col-general-product-info")
     if not cards:
         cards = soup.select("article, div")
 
@@ -202,86 +233,29 @@ def scrape_pasteur(query, max_results=10):
 
     for c in cards[:max_results]:
         try:
-            title_el = c.select_one("span.vtex-product-summary-2-x-productBrand") \
-                       or c.select_one("h3, h2, .product-name")
+            title_el = c.select_one("span.vtex-product-summary-2-x-productBrand")
+            price_el = (
+                c.select_one("span.vtex-product-price-1-x-currencyInteger")
+                or c.select_one("span.vtex-product-price-1-x-currencyContainer")
+            )
+            link_el = c.select_one("a.vtex-product-summary-2-x-clearLink[href]")
+            img_el = c.select_one("img.vtex-product-summary-2-x-image") or c.select_one("img")
 
-            price_el = c.select_one("span.vtex-product-price-1-x-currencyInteger") \
-                        or c.select_one("span.vtex-product-price-1-x-currencyContainer")
+            # procesar link
+            href = None
+            if link_el:
+                raw = link_el.get("href")
+                href = urljoin(base, raw) if raw.startswith("/") else raw
 
-            link_el = c.select_one("a.vtex-product-summary-2-x-clearLink[href]") \
-                       or c.select_one("a[href]")
-
-            img_el = c.select_one("img.vtex-product-summary-2-x-image") \
-                      or c.select_one("img")
-
-            # Procesamiento final
-            title = title_el.get_text(strip=True) if title_el else None
-            price_raw = price_el.get_text(strip=True) if price_el else None
-
-            # Enlaces relativos -> convertir a absolutos
-            href = link_el.get("href") if link_el else None
-            if href and href.startswith("/"):
-                href = urljoin(base, href)
-
-            img = img_el.get("src") if img_el and img_el.get("src") else None
+            img = img_el.get("src") if img_el else None
 
             results.append({
                 "store": "Pasteur",
-                "title": title,
-                "price_raw": price_raw,
-                "price": _normalize_price(price_raw) if price_raw else None,
+                "title": title_el.get_text(strip=True) if title_el else None,
+                "price_raw": price_el.get_text(strip=True) if price_el else None,
+                "price": _normalize_price(price_el.get_text()) if price_el else None,
                 "link": href,
-                "img": img,
-            })
-
-        except Exception:
-            continue
-
-    return results
-
-
-
-# ----------------------------------------------------
-# ÉXITO — Ajustado exactamente al HTML que enviaste
-# ----------------------------------------------------
-def scrape_exito(query, max_results=10):
-    base = "https://www.exito.com"
-    soup = _get_soup(f"{base}/s", params={"q": query}, log_prefix="exito")
-
-    if not soup:
-        return []
-
-    cards = soup.select("article[class*=productCard_productCard]")
-    if not cards:
-        cards = soup.select("article")
-
-    results = []
-
-    for c in cards[:max_results]:
-        try:
-            title = c.select_one("h3.styles_name__qQJiK") or c.select_one("h3") or c.select_one("h2")
-            price = c.select_one("p[data-fs-container-price-otros]") or \
-                    c.select_one("p[data-fs-price-final]") or \
-                    c.select_one("p")
-            link = c.select_one("a[data-testid=product-link]") or c.select_one("a[href]")
-            img = c.select_one("a[data-testid=product-link] img") or c.select_one("img")
-
-            href = None
-            if link:
-                raw = link.get("href")
-                href = raw if raw.startswith("http") else urljoin(base, raw)
-
-            img_src = None
-            if img:
-                img_src = img.get("src") or img.get("data-src")
-
-            results.append({
-                "store": "Exito",
-                "title": title.get_text(strip=True) if title else None,
-                "price_raw": price.get_text(strip=True) if price else None,
-                "price": _normalize_price(price.get_text()) if price else None,
-                "link": href,
-                "img": img_src
+                "img": img
             })
         except:
             continue
@@ -290,8 +264,67 @@ def scrape_exito(query, max_results=10):
 
 
 # ----------------------------------------------------
-# Ejecutar todas las tiendas
+# 5. ÉXITO (HTML confirmado)
 # ----------------------------------------------------
+def scrape_exito(query, max_results=10):
+    base = "https://www.exito.com"
+
+    soup = _get_soup(
+        f"{base}/s",
+        params={"q": query},
+        log_prefix="exito"
+    )
+
+    if not soup:
+        return []
+
+    cards = soup.select("article[class*=productCard_productCard]")
+    results = []
+
+    for c in cards[:max_results]:
+        try:
+            title_el = (
+                c.select_one("h3.styles_name__qQJiK")
+                or c.select_one("h3")
+                or c.select_one("h2")
+            )
+            price_el = (
+                c.select_one("p[data-fs-container-price-otros]")
+                or c.select_one("p[data-fs-price-final]")
+                or c.select_one("p")
+            )
+            link_el = c.select_one("a[data-testid=product-link]") or c.select_one("a[href]")
+            img_el = c.select_one("a[data-testid=product-link] img") or c.select_one("img")
+
+            # procesar link
+            href = None
+            if link_el:
+                raw = link_el.get("href")
+                href = raw if raw.startswith("http") else urljoin(base, raw)
+
+            # procesar imagen
+            img = None
+            if img_el:
+                img = img_el.get("src") or img_el.get("data-src")
+
+            results.append({
+                "store": "Éxito",
+                "title": title_el.get_text(strip=True) if title_el else None,
+                "price_raw": price_el.get_text(strip=True) if price_el else None,
+                "price": _normalize_price(price_el.get_text()) if price_el else None,
+                "link": href,
+                "img": img
+            })
+
+        except:
+            continue
+
+    return results
+
+
+# ====================================================
+# EJECUTAR TODAS LAS TIENDAS
+# ====================================================
 def scrape_all(query, max_per_store=6, selected_stores=None):
 
     stores = {
@@ -299,10 +332,10 @@ def scrape_all(query, max_per_store=6, selected_stores=None):
         "Pasteur": scrape_pasteur,
         "Cruz Verde": scrape_cruzverde,
         "Rebaja": scrape_rebaja,
-        "Exito": scrape_exito
+        "Éxito": scrape_exito
     }
 
-    # Filtrar tiendas seleccionadas correctamente
+    # Filtrar tiendas seleccionadas
     if selected_stores:
         stores = {k: fn for k, fn in stores.items() if k in selected_stores}
 
