@@ -172,49 +172,73 @@ def scrape_cruzverde(query, max_results=10):
 # ----------------------------------------------------
 # PASTEUR — FIX multi-palabra y mejor endpoint VTEX
 # ----------------------------------------------------
-def scrape_pasteur(query, max_results=10):
-    url = f"https://www.farmaciaspasteur.com.co/{query}?_q={query}&map=ft"
+from urllib.parse import quote
 
-    #soup = _get_soup(
-    #    f"{base}/",
-    #    params={"":query, "map": "ft"},
-    #    log_prefix="pasteur"
-    #)
+def scrape_pasteur(query, max_results=10):
+    base = "https://www.farmaciaspasteur.com.co"
+
+    # Codificar query para incluirlo en la ruta y en parámetros
+    q_path = quote(query)               # parte del path
+    q_param = query                     # parte del parámetro, requests la codifica
+
+    # URL REAL que usa Pasteur
+    url = f"{base}/{q_path}?_q={q_param}&map=ft"
+
+    # Obtener HTML
     soup = _get_soup(url, log_prefix="pasteur")
     if not soup:
         return []
 
-    cards = soup.select("div.vtex-flex-layout-0-x-flexCol--col-general-product-info")
+    # Extractor principal de VTEX
+    cards = soup.select(
+        "div.vtex-flex-layout-0-x-flexCol--col-general-product-info"
+    )
+
+    # fallback si cambian la plantilla
     if not cards:
         cards = soup.select("article, div")
 
     results = []
+
     for c in cards[:max_results]:
         try:
-            title = c.select_one("span.vtex-product-summary-2-x-productBrand")
-            price = c.select_one("span.vtex-product-price-1-x-currencyInteger") or \
-                    c.select_one("span.vtex-product-price-1-x-currencyContainer")
-            link = c.select_one("a.vtex-product-summary-2-x-clearLink[href]")
-            img = c.select_one("img.vtex-product-summary-2-x-image")
+            title_el = c.select_one("span.vtex-product-summary-2-x-productBrand") \
+                       or c.select_one("h3, h2, .product-name")
 
-            href = link.get("href") if link else None
+            price_el = c.select_one("span.vtex-product-price-1-x-currencyInteger") \
+                        or c.select_one("span.vtex-product-price-1-x-currencyContainer")
+
+            link_el = c.select_one("a.vtex-product-summary-2-x-clearLink[href]") \
+                       or c.select_one("a[href]")
+
+            img_el = c.select_one("img.vtex-product-summary-2-x-image") \
+                      or c.select_one("img")
+
+            # Procesamiento final
+            title = title_el.get_text(strip=True) if title_el else None
+            price_raw = price_el.get_text(strip=True) if price_el else None
+
+            # Enlaces relativos -> convertir a absolutos
+            href = link_el.get("href") if link_el else None
             if href and href.startswith("/"):
-                href = urljoin(url, href)
+                href = urljoin(base, href)
 
-            img_src = img.get("src") if img else None
+            img = img_el.get("src") if img_el and img_el.get("src") else None
 
             results.append({
-                "store": "Pasteur"+soup,
-                "title": title.get_text(strip=True) if title else None,
-                "price_raw": price.get_text(strip=True) if price else None,
-                "price": _normalize_price(price.get_text()) if price else None,
+                "store": "Pasteur",
+                "title": title,
+                "price_raw": price_raw,
+                "price": _normalize_price(price_raw) if price_raw else None,
                 "link": href,
-                "img": img_src
+                "img": img,
             })
-        except:
+
+        except Exception:
             continue
 
     return results
+
 
 
 # ----------------------------------------------------
