@@ -108,3 +108,6 @@ if run_button and query.strip():
             **Precio:** {r['precio_raw'] or 'N/A'}  
             [🔗 Ver producto]({r['link']})
             """)
+if st.checkbox("Mostrar depuracion"):
+    st.subheader("Datos crudos devueltos por scrape_all()")
+    st.json(data)

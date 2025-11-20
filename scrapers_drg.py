@@ -360,6 +360,3 @@ def scrape_all(query, max_per_store=6):
             print(f"[ERROR en {name}] {e}")
 
     return out
-if st.checkbox("Mostrar depuracion"):
-    st.subheader("Datos crudos devueltos por scrape_all()")
-    st.json(data)
