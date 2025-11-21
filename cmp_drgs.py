@@ -35,6 +35,8 @@ if run_button and query.strip():
     #if st.checkbox("Mostrar depuracion"):
     #    st.subheader("Datos crudos devueltos por scrape_all()")
     st.json(data)
+    st.write("CARD HTML:", str(c)[:500])
+
     
     elapsed = time.time() - start
     st.success(f"Búsqueda completada en {elapsed:.1f} s")
