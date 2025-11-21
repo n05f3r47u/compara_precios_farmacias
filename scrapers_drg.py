@@ -340,7 +340,7 @@ def scrape_exito(query, max_results=10):
 def scrape_all(query, max_per_store=6):
     stores = {
         "Farmatodo": scrape_farmatodo,
-        #"Pasteur": scrape_pasteur,
+        "Pasteur": scrape_pasteur,
         "Cruz Verde": scrape_cruzverde,
         "Rebaja": scrape_rebaja,
         "Exito": scrape_exito
