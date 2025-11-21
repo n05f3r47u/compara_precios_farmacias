@@ -170,50 +170,53 @@ def scrape_rebaja(query, max_results=10):
 def scrape_cruzverde(query, max_results=10):
     base = "https://www.cruzverde.com.co"
 
-  # Separar solo la primera palabra para el PATH
-    parts = query.split()
-    first = quote(parts[0])  # primera palabra codificada
-    full_q = query.strip()
-    
-    url = (
-        f"{base}/search?query={full_q}"
-    )
-
+    url = f"{base}/search?query={query}"
     soup = _get_soup(url, log_prefix="cruzverde")
+
     if not soup:
         return []
 
+    # Productos en Cruz Verde siempre están dentro de <ml-card-product>
     cards = soup.select("ml-card-product")
-    print({url})
-    if not cards:
-        cards = soup.select("article, div")
 
     results = []
 
     for c in cards[:max_results]:
         try:
-            title_el = c.select_one("a.font-open.flex.items-center")
-            price_el = c.select_one("span.font-bold.tex-.prices")
-            link_el = c.select_one("a.font-open.flex.items-center[href]")
-            img_el = c.select_one("img.ng-tns-c36-165") or c.select_one("img")
+            # TÍTULO
+            title_el = c.select_one("a[id] span")
 
-            # procesar link
+            # LINK
+            link_el = c.select_one("a[id][href]")
             href = None
             if link_el:
                 raw = link_el.get("href")
-                href = urljoin(base, raw) if raw.startswith("/") else raw
+                if raw:
+                    href = urljoin(base, raw)
 
+            # IMAGEN
+            img_el = c.select_one("img")
             img = img_el.get("src") if img_el else None
+
+            # PRECIO
+            price_el = (
+                c.select_one("span.font-bold.text-prices")
+                or c.select_one("span.font-bold")
+            )
+
+            price_raw = price_el.get_text(strip=True) if price_el else None
+            price = _normalize_price(price_raw)
 
             results.append({
                 "store": "Cruz Verde",
                 "title": title_el.get_text(strip=True) if title_el else None,
-                "price_raw": price_el.get_text(strip=True) if price_el else None,
-                "price": _normalize_price(price_el.get_text()) if price_el else None,
+                "price_raw": price_raw,
+                "price": price,
                 "link": href,
-                "img": img
+                "img": img,
             })
-        except:
+
+        except Exception as e:
             continue
 
     return results
