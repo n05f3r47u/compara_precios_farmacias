@@ -110,4 +110,4 @@ if run_button and query.strip():
             """)
 if st.checkbox("Mostrar depuracion"):
     st.subheader("Datos crudos devueltos por scrape_all()")
-    st.json(data)
+    st.json({data})
