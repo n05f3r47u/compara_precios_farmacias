@@ -171,45 +171,66 @@ def scrape_cruzverde(query, max_results=10):
     base = "https://www.cruzverde.com.co"
 
     url = f"{base}/search?query={query}"
+    print("\n============== CRUZ VERDE DEBUG ==============")
+    print("URL generada:", url)
+
     soup = _get_soup(url, log_prefix="cruzverde")
 
     if not soup:
+        print("? No se pudo obtener HTML de Cruz Verde")
         return []
 
-    # Productos en Cruz Verde siempre están dentro de <ml-card-product>
+    # Mostrar un fragmento del HTML para verificar descarga
+    print("HTML recibido (primeros 500 caracteres):")
+    print(soup.text[:500])
+
+    # Buscar los cards reales
     cards = soup.select("ml-card-product")
+    print(f"Tarjetas encontradas con <ml-card-product>: {len(cards)}")
+
+    if not cards:
+        print("? No se hallaron <ml-card-product>, probando con fallback...")
+        cards = soup.select("div, article")
+        print("Tarjetas encontradas con fallback:", len(cards))
 
     results = []
 
-    for c in cards[:max_results]:
-        try:
-            # TÍTULO
-            title_el = c.select_one("a[id] span")
+    for i, c in enumerate(cards[:max_results]):
+        print(f"\n---- Producto {i+1} ----")
 
-            # LINK
+        try:
+            # Título
+            title_el = c.select_one("a[id] span")
+            title = title_el.get_text(strip=True) if title_el else None
+            print("Título:", title)
+
+            # Link
             link_el = c.select_one("a[id][href]")
             href = None
             if link_el:
                 raw = link_el.get("href")
-                if raw:
-                    href = urljoin(base, raw)
+                href = urljoin(base, raw)
+            print("Link:", href)
 
-            # IMAGEN
+            # Imagen
             img_el = c.select_one("img")
             img = img_el.get("src") if img_el else None
+            print("Imagen:", img)
 
-            # PRECIO
+            # Precio
             price_el = (
                 c.select_one("span.font-bold.text-prices")
                 or c.select_one("span.font-bold")
+                or c.select_one("span.text-prices")
             )
-
             price_raw = price_el.get_text(strip=True) if price_el else None
             price = _normalize_price(price_raw)
+            print("Precio raw:", price_raw)
+            print("Precio normalizado:", price)
 
             results.append({
-                "store": "Cruzverde",
-                "title": title_el.get_text(strip=True) if title_el else None,
+                "store": "Cruz Verde",
+                "title": title,
                 "price_raw": price_raw,
                 "price": price,
                 "link": href,
@@ -217,7 +238,10 @@ def scrape_cruzverde(query, max_results=10):
             })
 
         except Exception as e:
+            print("? Error procesando producto:", e)
             continue
+
+    print("============== FIN DEBUG CRUZ VERDE ==============\n")
 
     return results
 
