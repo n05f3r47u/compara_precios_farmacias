@@ -23,7 +23,7 @@ DEFAULT_HEADERS = {
     ),
 }
 
-ENABLE_LOGS = True   # cambiar a True solo si quieres logs en _logs/
+ENABLE_LOGS = False   # cambiar a True solo si quieres logs en _logs/
 # Habilita logs HTML si necesitas depuración
 
 
@@ -201,7 +201,7 @@ def scrape_cruzverde(query, max_results=10):
             img = img_el.get("src") if img_el else None
 
             results.append({
-                "store": "Cruzverde",
+                "store": "Cruz Verde",
                 "title": title_el.get_text(strip=True) if title_el else None,
                 "price_raw": price_el.get_text(strip=True) if price_el else None,
                 "price": _normalize_price(price_el.get_text()) if price_el else None,
@@ -340,7 +340,7 @@ def scrape_exito(query, max_results=10):
 def scrape_all(query, max_per_store=6):
     stores = {
         "Farmatodo": scrape_farmatodo,
-        "Pasteur": scrape_pasteur,
+        #"Pasteur": scrape_pasteur,
         "Cruz Verde": scrape_cruzverde,
         "Rebaja": scrape_rebaja,
         "Exito": scrape_exito
