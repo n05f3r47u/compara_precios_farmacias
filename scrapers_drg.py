@@ -208,7 +208,7 @@ def scrape_cruzverde(query, max_results=10):
             price = _normalize_price(price_raw)
 
             results.append({
-                "store": "Cruz Verde",
+                "store": "Cruzverde",
                 "title": title_el.get_text(strip=True) if title_el else None,
                 "price_raw": price_raw,
                 "price": price,
