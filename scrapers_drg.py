@@ -202,7 +202,7 @@ def scrape_cruzverde(query, max_results=10):
             # Título
             title_el = c.select_one("a[id] span")
             title = title_el.get_text(strip=True) if title_el else None
-            print("Título:", title)
+            print("Titulo:", title)
 
             # Link
             link_el = c.select_one("a[id][href]")
