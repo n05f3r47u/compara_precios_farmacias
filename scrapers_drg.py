@@ -170,8 +170,13 @@ def scrape_rebaja(query, max_results=10):
 def scrape_cruzverde(query, max_results=10):
     base = "https://www.cruzverde.com.co"
 
+  # Separar solo la primera palabra para el PATH
+    parts = query.split()
+    first = quote(parts[0])  # primera palabra codificada
+    full_q = query.strip()
+    
     url = (
-        f"{base}/search?query={query}"
+        f"{base}/search?query={full_q}"
     )
 
     soup = _get_soup(url, log_prefix="cruzverde")
